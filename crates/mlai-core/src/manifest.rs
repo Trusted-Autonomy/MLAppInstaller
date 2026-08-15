@@ -16,6 +16,8 @@ pub struct Component {
     pub default: bool,
     pub setup: Option<SetupCommand>,
     pub health: Option<HealthCheck>,
+    #[serde(default)]
+    pub supports_options_protocol: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -107,5 +109,27 @@ path = "marker.txt"
     fn rejects_invalid_toml() {
         let err = Manifest::parse("not valid toml [[[").unwrap_err();
         assert!(matches!(err, ManifestError::Parse(_)));
+    }
+
+    #[test]
+    fn supports_options_protocol_defaults_to_false_when_absent() {
+        let manifest = Manifest::parse(SAMPLE).unwrap();
+        assert!(!manifest.components[0].supports_options_protocol);
+    }
+
+    #[test]
+    fn supports_options_protocol_parses_when_present() {
+        let toml = r#"
+manifest_version = "1.0.0"
+
+[[components]]
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
+ref = "main"
+default = true
+supports_options_protocol = true
+"#;
+        let manifest = Manifest::parse(toml).unwrap();
+        assert!(manifest.components[0].supports_options_protocol);
     }
 }

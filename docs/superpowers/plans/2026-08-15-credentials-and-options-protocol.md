@@ -39,7 +39,7 @@
 **Interfaces:**
 - Produces: `mlai_credentials::error::VaultError` (`Io`, `Serialization`, `KeyUnreadable { path, reason }`, `DecryptionFailed { path, reason }`, `EncryptionFailed(String)`). `mlai_credentials::encryption::{KeyCustody, FALLBACK_KEY_FILENAME, load_or_create_identity, encrypt, decrypt}`. `KeyCustody` variants: `Keychain`, `FallbackFile(PathBuf)`. `load_or_create_identity(vault_dir: &Path, keyring_service: &str, keyring_user: &str, use_keychain: bool) -> Result<(age::x25519::Identity, KeyCustody), VaultError>`. `encrypt(identity: &Identity, plaintext: &[u8]) -> Result<Vec<u8>, VaultError>`. `decrypt(identity: &Identity, vault_path: &Path, ciphertext: &[u8]) -> Result<Vec<u8>, VaultError>`.
 
-- [ ] **Step 1: Add the workspace member and create the crate skeleton**
+- [x] **Step 1: Add the workspace member and create the crate skeleton**
 
 Modify `Cargo.toml` (repo root) — change:
 ```toml
@@ -79,7 +79,7 @@ cd crates/mlai-credentials && cargo build
 ```
 Expected: succeeds (empty `error` module referenced next step, `encryption` not yet declared).
 
-- [ ] **Step 2: Write `error.rs` (no test needed — pure type definitions consumed by the next step's tests)**
+- [x] **Step 2: Write `error.rs` (no test needed — pure type definitions consumed by the next step's tests)**
 
 `crates/mlai-credentials/src/error.rs`:
 ```rust
@@ -121,7 +121,7 @@ pub enum VaultError {
 
 Add to `crates/mlai-credentials/src/lib.rs` (already present from Step 1 — no change needed here; `error` is already declared).
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 `crates/mlai-credentials/src/encryption.rs`:
 ```rust
@@ -198,12 +198,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [x] **Step 4: Run test to verify it fails**
 
 Run: `cd crates/mlai-credentials && cargo test`
 Expected: FAIL to compile — `load_or_create_identity`, `KeyCustody`, `FALLBACK_KEY_FILENAME`, `encrypt`, `decrypt` are not defined.
 
-- [ ] **Step 5: Write the implementation**
+- [x] **Step 5: Write the implementation**
 
 Prepend this to the top of `crates/mlai-credentials/src/encryption.rs`, above the `#[cfg(test)]` module. This is adapted directly from TA's proven `ta-credentials/src/encryption.rs`, generalized so the keyring service/user are caller parameters instead of hardcoded to `trusted-autonomy-vault`:
 ```rust
@@ -347,12 +347,12 @@ Add to `crates/mlai-credentials/src/lib.rs`:
 pub mod encryption;
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `cd crates/mlai-credentials && cargo test`
 Expected: PASS — 5 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Cargo.toml crates/mlai-credentials
@@ -371,7 +371,7 @@ git commit -m "feat(mlai-credentials): add age-encrypted identity custody (keych
 - Consumes: `mlai_credentials::encryption::{load_or_create_identity, encrypt, decrypt, KeyCustody}` (Task 1), `mlai_credentials::error::VaultError` (Task 1).
 - Produces: `mlai_credentials::vault::{VaultConfig, Vault}`. `VaultConfig { vault_dir: PathBuf, keyring_service: String, keyring_user: String }`. `Vault::open(config: VaultConfig, use_keychain: bool) -> Result<Vault, VaultError>`. `Vault::get(&self, key: &str) -> Option<&str>`. `Vault::set(&mut self, key: &str, value: &str) -> Result<(), VaultError>`. `Vault::custody(&self) -> &KeyCustody`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-credentials/src/vault.rs`:
 ```rust
@@ -430,12 +430,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-credentials && cargo test vault::`
 Expected: FAIL to compile — module `vault` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-credentials/src/vault.rs`:
 ```rust
@@ -513,12 +513,12 @@ Add to `crates/mlai-credentials/src/lib.rs`:
 pub mod vault;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-credentials && cargo test`
 Expected: PASS — 9 tests total (5 from Task 1 + 4 new).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-credentials/src/vault.rs crates/mlai-credentials/src/lib.rs
@@ -538,7 +538,7 @@ git commit -m "feat(mlai-credentials): add flat encrypted key-value vault"
 - Consumes: `mlai_core::manifest::SetupCommand` (Plan A, Task 1).
 - Produces: `Component.supports_options_protocol: bool` (new field, `#[serde(default)]`, so existing manifests without it still parse). `mlai_core::options_protocol::{OptionsDescriptor, OptionSpec, ChoiceValue, OptionsError, describe_options}`. `describe_options(setup: &SetupCommand, component_dir: &Path, timeout: Duration) -> Result<OptionsDescriptor, OptionsError>`.
 
-- [ ] **Step 1: Write the failing test for the manifest field**
+- [x] **Step 1: Write the failing test for the manifest field**
 
 In `crates/mlai-core/src/manifest.rs`, add this test to the existing `#[cfg(test)] mod tests` block (append after `rejects_invalid_toml`):
 ```rust
@@ -565,12 +565,12 @@ supports_options_protocol = true
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test manifest::`
 Expected: FAIL to compile — `Component` has no field `supports_options_protocol`.
 
-- [ ] **Step 3: Add the field**
+- [x] **Step 3: Add the field**
 
 In `crates/mlai-core/src/manifest.rs`, modify the `Component` struct (add the new field at the end):
 ```rust
@@ -589,12 +589,12 @@ pub struct Component {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test manifest::`
 Expected: PASS — 6 tests (4 from Plan A + 2 new). Note: this will also break `crates/mlai-core/src/pipeline.rs`'s tests (they construct `Component` literals without the new field) and `crates/mlai-cli`'s build — fixed in the next two steps before committing, so the workspace is never left in a broken state between commits.
 
-- [ ] **Step 5: Fix the now-broken `Component` literal in pipeline.rs**
+- [x] **Step 5: Fix the now-broken `Component` literal in pipeline.rs**
 
 In `crates/mlai-core/src/pipeline.rs`, modify `sample_component()` (used by all pipeline tests) — add the new field:
 ```rust
@@ -614,14 +614,14 @@ In `crates/mlai-core/src/pipeline.rs`, modify `sample_component()` (used by all 
 Run: `cargo build --workspace`
 Expected: succeeds (mlai-cli doesn't construct `Component` literals directly — it goes through `Manifest::parse`, which already handles the new `#[serde(default)]` field transparently).
 
-- [ ] **Step 6: Commit the manifest field**
+- [x] **Step 6: Commit the manifest field**
 
 ```bash
 git add crates/mlai-core/src/manifest.rs crates/mlai-core/src/pipeline.rs
 git commit -m "feat(mlai-core): add supports_options_protocol manifest flag"
 ```
 
-- [ ] **Step 7: Write the failing test for the options-protocol probe**
+- [x] **Step 7: Write the failing test for the options-protocol probe**
 
 `crates/mlai-core/src/options_protocol.rs`:
 ```rust
@@ -709,12 +709,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 8: Run test to verify it fails**
+- [x] **Step 8: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test options_protocol::`
 Expected: FAIL to compile — module `options_protocol` doesn't exist yet.
 
-- [ ] **Step 9: Write the implementation**
+- [x] **Step 9: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/options_protocol.rs`:
 ```rust
@@ -857,17 +857,17 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod options_protocol;
 ```
 
-- [ ] **Step 10: Run test to verify it passes**
+- [x] **Step 10: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test options_protocol::`
 Expected: PASS — 5 tests.
 
-- [ ] **Step 11: Run the full mlai-core suite**
+- [x] **Step 11: Run the full mlai-core suite**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: PASS — all tests across manifest (6), state (3), backup (3), health (3), fetch (3), pipeline (3), options_protocol (5) = 26 tests.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add crates/mlai-core/src/options_protocol.rs crates/mlai-core/src/lib.rs
@@ -886,7 +886,7 @@ git commit -m "feat(mlai-core): add backend-options protocol probe (describe-opt
 - Consumes: none new.
 - Produces: `PipelineOptions.set_options: Vec<(String, String)>` (new field). `install_component` now appends `--set key=value` per pair to the setup command's args before running it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `crates/mlai-core/src/pipeline.rs`, add this to the existing `#[cfg(test)] mod tests` block (append after `backs_up_existing_install_before_replacing_it`), and add a second fixture-zip builder alongside the existing `build_fixture_zip`:
 ```rust
@@ -927,12 +927,12 @@ In `crates/mlai-core/src/pipeline.rs`, add this to the existing `#[cfg(test)] mo
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test pipeline::`
 Expected: FAIL to compile — `PipelineOptions` has no field `set_options`, and all existing `PipelineOptions { .. }` literals in this file's other tests are now missing a required field too.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `crates/mlai-core/src/pipeline.rs`, modify the `PipelineOptions` struct:
 ```rust
@@ -979,7 +979,7 @@ fn run_setup(
 
 Fix the three existing `PipelineOptions { .. }` literals in this same file's test module (`installs_a_component_end_to_end_and_records_healthy_state`, `skips_reinstall_when_already_healthy_at_same_version`, `backs_up_existing_install_before_replacing_it`) by adding `set_options: vec![],` to each.
 
-- [ ] **Step 4: Fix the now-broken PipelineOptions construction in mlai-cli**
+- [x] **Step 4: Fix the now-broken PipelineOptions construction in mlai-cli**
 
 In `crates/mlai-cli/src/commands/install.rs`, modify the `PipelineOptions { .. }` literal inside the `for component in components` loop — add the new field:
 ```rust
@@ -993,12 +993,12 @@ In `crates/mlai-cli/src/commands/install.rs`, modify the `PipelineOptions { .. }
 ```
 (Task 5 replaces `Vec::new()` with the real CLI-supplied value.)
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — mlai-core's pipeline suite now has 4 tests (3 from Plan A + 1 new); full workspace suite green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/pipeline.rs crates/mlai-cli/src/commands/install.rs
@@ -1021,14 +1021,14 @@ git commit -m "feat(mlai-core): thread set_options through to --set key=value on
 - Consumes: `mlai_core::pipeline::PipelineOptions` (Task 4), `mlai_credentials::vault::{Vault, VaultConfig}` (Task 2).
 - Produces: `mlai install --manifest <path> --install-root <dir> [--component <name>] [--set key=value]...` (repeatable). `mlai credential set <key> [--vault-dir <dir>]` (reads the secret value from stdin).
 
-- [ ] **Step 1: Add the mlai-credentials dependency**
+- [x] **Step 1: Add the mlai-credentials dependency**
 
 Modify `crates/mlai-cli/Cargo.toml` — add to `[dependencies]`:
 ```toml
 mlai-credentials = { path = "../mlai-credentials" }
 ```
 
-- [ ] **Step 2: Write the failing integration test for `install --set`**
+- [x] **Step 2: Write the failing integration test for `install --set`**
 
 In `crates/mlai-cli/tests/install.rs`, add this test (append after `install_command_fails_clearly_for_unknown_named_component`):
 ```rust
@@ -1066,7 +1066,7 @@ default = true
 }
 ```
 
-- [ ] **Step 3: Write the failing integration test for `credential set`**
+- [x] **Step 3: Write the failing integration test for `credential set`**
 
 `crates/mlai-cli/tests/credential.rs`:
 ```rust
@@ -1096,12 +1096,12 @@ fn credential_set_stores_a_secret_read_from_stdin() {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they fail**
+- [x] **Step 4: Run tests to verify they fail**
 
 Run: `cargo test --workspace`
 Expected: FAIL to compile — `crates/mlai-cli/src/commands/credential.rs` doesn't exist yet, and `install`'s CLI doesn't accept `--set`.
 
-- [ ] **Step 5: Write `commands/credential.rs`**
+- [x] **Step 5: Write `commands/credential.rs`**
 
 `crates/mlai-cli/src/commands/credential.rs`:
 ```rust
@@ -1145,7 +1145,7 @@ pub mod credential;
 pub mod install;
 ```
 
-- [ ] **Step 6: Wire up the CLI surface**
+- [x] **Step 6: Wire up the CLI surface**
 
 Modify `crates/mlai-cli/src/main.rs`:
 ```rust
@@ -1215,7 +1215,7 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-- [ ] **Step 7: Wire `--set` through `commands/install.rs`**
+- [x] **Step 7: Wire `--set` through `commands/install.rs`**
 
 Modify `crates/mlai-cli/src/commands/install.rs` — change the function signature and add the protocol-support gate:
 ```rust
@@ -1274,12 +1274,12 @@ pub fn run(
 }
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
+- [x] **Step 8: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — all `mlai-core` and `mlai-credentials` unit tests, plus 4 `mlai-cli` integration tests in `install.rs` (2 from Plan A + the new `--set` rejection test... note the original 2 tests from Plan A still pass unmodified since `run()`'s new 4th parameter is additive at call sites within those tests only via the CLI binary, not a direct Rust call) plus 1 in `credential.rs`.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -1295,7 +1295,7 @@ git commit -m "feat(mlai-cli): add install --set and credential set commands"
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -1306,7 +1306,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS. Fix any `cargo fmt --all` or clippy findings before proceeding (docs/CONSTITUTION.md §5).
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add this section to `docs/USAGE.md`, after the existing "Private sources" section and before "Not yet implemented":
 ```markdown
@@ -1351,14 +1351,14 @@ Also update the "Not yet implemented" list at the bottom to remove "local-vs-hos
 follow-ups — see `docs/superpowers/specs/2026-08-14-foundation-design.md`.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document backend options protocol and credential vault"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run:
 ```bash

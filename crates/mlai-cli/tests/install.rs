@@ -108,3 +108,36 @@ default = true
         .failure()
         .stderr(contains("no component named 'nonexistent'"));
 }
+
+#[test]
+fn install_command_rejects_set_for_a_component_without_protocol_support() {
+    let manifest_dir = tempdir().unwrap();
+    let manifest_path = manifest_dir.path().join("manifest.toml");
+    fs::write(
+        &manifest_path,
+        r#"
+manifest_version = "1.0.0"
+
+[[components]]
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
+ref = "main"
+default = true
+"#,
+    )
+    .unwrap();
+    let install_root = tempdir().unwrap();
+
+    let mut cmd = Command::cargo_bin("mlai").unwrap();
+    cmd.arg("install")
+        .arg("--manifest")
+        .arg(&manifest_path)
+        .arg("--install-root")
+        .arg(install_root.path())
+        .arg("--set")
+        .arg("model=qwen3:14b");
+
+    cmd.assert()
+        .failure()
+        .stderr(contains("does not declare supports_options_protocol"));
+}

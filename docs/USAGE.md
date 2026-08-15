@@ -58,8 +58,39 @@ newest 3 backups are kept; older ones are pruned automatically.
 Set `MLAI_TOKEN` in the environment to send a bearer token with the
 component download request (for private/authenticated source URLs).
 
+## Backend options protocol
+
+A component can declare `supports_options_protocol = true` in the manifest
+to expose local-vs-hosted choices. `mlai` never probes or passes options to
+a component that hasn't declared this — an unpatched setup script could
+otherwise silently run its real setup instead of erroring on an unknown
+flag.
+
+```bash
+mlai install --manifest manifest.toml --install-root ~/my-app --set model=qwen3:14b
+```
+
+`--set key=value` is repeatable and passed straight through to the
+component's setup command, verbatim compatible with cinepipe-installer's
+existing `--set key=value` convention (see
+`docs/superpowers/specs/2026-08-14-foundation-design.md`).
+
+## Credentials
+
+Hosted-model API keys and other secrets are never stored in plaintext.
+`mlai credential set <key>` stores a value (read from stdin) in an
+age-encrypted vault, using the OS keychain when available and falling back
+to a chmod-0600 file otherwise (with a loud warning when that fallback is
+used):
+
+```bash
+echo "sk-your-api-key" | mlai credential set openai-api-key
+```
+
+**Known v1 limitation**: stdin input is not hidden (no `*` masking) — avoid
+running this on a shared terminal. A proper hidden-input UX is a follow-up.
+
 ## Not yet implemented
 
-`repair`, `uninstall`, `update`, local-vs-hosted backend selection, and
-cloud config generation are planned follow-ups — see
-`docs/superpowers/specs/2026-08-14-foundation-design.md`.
+`repair`, `uninstall`, `update`, and cloud config generation are planned
+follow-ups — see `docs/superpowers/specs/2026-08-14-foundation-design.md`.
