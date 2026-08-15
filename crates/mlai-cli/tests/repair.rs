@@ -1,9 +1,15 @@
 use assert_cmd::Command;
 use predicates::str::contains;
 use std::fs;
+#[cfg(unix)]
 use std::io::Write;
 use tempfile::tempdir;
 
+// This component declares only a posix setup script — on Windows,
+// setup_for_current_os() returns None, so setup never runs and the fixture
+// this builds (a marker.txt created by setup.sh) never materializes. Gated
+// to unix, matching the test that's its only caller.
+#[cfg(unix)]
 fn build_fixture_zip(path: &std::path::Path) {
     let file = fs::File::create(path).unwrap();
     let mut zip = zip::ZipWriter::new(file);
