@@ -40,7 +40,7 @@ Deferred to follow-up plans (see `docs/superpowers/specs/2026-08-14-foundation-d
 **Interfaces:**
 - Produces: `mlai_core::manifest::{Manifest, Component, SetupCommand, HealthCheck, ManifestError}`. `Manifest::parse(toml_str: &str) -> Result<Manifest, ManifestError>`. `Manifest::default_components(&self) -> Vec<&Component>`. `Manifest::find_component(&self, name: &str) -> Option<&Component>`. `Component` fields: `name: String`, `source_url: String`, `component_ref: String` (TOML key `ref`), `default: bool`, `setup: Option<SetupCommand>`, `health: Option<HealthCheck>`.
 
-- [ ] **Step 1: Create the workspace and crate skeleton**
+- [x] **Step 1: Create the workspace and crate skeleton**
 
 `Cargo.toml` (repo root):
 ```toml
@@ -85,7 +85,7 @@ cd crates/mlai-core && cargo build
 ```
 Expected: succeeds (empty `manifest` module, no types yet — module file created next step).
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `crates/mlai-core/src/manifest.rs`:
 ```rust
@@ -147,12 +147,12 @@ path = "marker.txt"
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: FAIL to compile — `Manifest`, `HealthCheck`, `ManifestError` are not defined.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 Prepend this to the top of `crates/mlai-core/src/manifest.rs`, above the `#[cfg(test)]` module:
 ```rust
@@ -210,12 +210,12 @@ impl Manifest {
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Cargo.toml crates/mlai-core/Cargo.toml crates/mlai-core/src/lib.rs crates/mlai-core/src/manifest.rs
@@ -234,7 +234,7 @@ git commit -m "feat(mlai-core): add manifest schema and TOML parsing"
 - Consumes: none new.
 - Produces: `mlai_core::state::{ComponentState, ComponentRecord, InstalledState, StateError}`. `ComponentState` variants: `Downloaded, Unpacked, SetupRun, Healthy, NeedsAttention`. `InstalledState::state_path(install_root: &Path) -> PathBuf`. `InstalledState::load(install_root: &Path) -> Result<InstalledState, StateError>` (returns `InstalledState::default()` if no file exists). `InstalledState::save(&self, install_root: &Path) -> Result<(), StateError>`. `InstalledState.components: BTreeMap<String, ComponentRecord>`. `ComponentRecord { version: String, component_ref: String, state: ComponentState, installed_at: String }`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/state.rs`:
 ```rust
@@ -279,12 +279,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test state::`
 Expected: FAIL to compile — module `state` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/state.rs`:
 ```rust
@@ -361,12 +361,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod state;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test state::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-core/src/state.rs crates/mlai-core/src/lib.rs
@@ -385,7 +385,7 @@ git commit -m "feat(mlai-core): add installed-state tracking with JSON round-tri
 - Consumes: none new.
 - Produces: `mlai_core::backup::{backup_component, prune_backups, BackupError}`. `backup_component(install_root: &Path, component_name: &str, timestamp: &str) -> Result<PathBuf, BackupError>` — copies `install_root/<name>` to `install_root/.mlai-install/backups/<timestamp>/<name>`. `prune_backups(install_root: &Path, keep: usize) -> Result<(), BackupError>` — keeps the `keep` lexicographically-newest timestamp directories.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/backup.rs`:
 ```rust
@@ -438,12 +438,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test backup::`
 Expected: FAIL to compile — module `backup` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/backup.rs`:
 ```rust
@@ -523,12 +523,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod backup;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test backup::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-core/src/backup.rs crates/mlai-core/src/lib.rs
@@ -547,7 +547,7 @@ git commit -m "feat(mlai-core): add backup-before-overwrite with newest-N prunin
 - Consumes: `mlai_core::manifest::HealthCheck` (Task 1).
 - Produces: `mlai_core::health::{HealthStatus, check_health}`. `HealthStatus` variants: `Healthy`, `NeedsAttention(String)`. `check_health(component_dir: &Path, health: Option<&HealthCheck>) -> HealthStatus` — `None` is always `Healthy`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/health.rs`:
 ```rust
@@ -582,12 +582,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test health::`
 Expected: FAIL to compile — module `health` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/health.rs`:
 ```rust
@@ -625,12 +625,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod health;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test health::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-core/src/health.rs crates/mlai-core/src/lib.rs
@@ -649,7 +649,7 @@ git commit -m "feat(mlai-core): add health-check evaluation"
 - Consumes: none new.
 - Produces: `mlai_core::fetch::{Fetcher, HttpFetcher, unpack_zip, FetchError}`. `trait Fetcher { fn fetch(&self, url: &str, dest_zip: &Path) -> Result<(), FetchError>; }`. `HttpFetcher { pub token: Option<String> }` implements `Fetcher`. `unpack_zip(zip_path: &Path, dest_dir: &Path, component_name: &str) -> Result<PathBuf, FetchError>` — extracts, finds the archive's single top-level directory, renames it to `dest_dir/<component_name>`.
 
-- [ ] **Step 1: Add dev-dependency for archive fixtures in tests**
+- [x] **Step 1: Add dev-dependency for archive fixtures in tests**
 
 Add `mockito = "1"` is already present from Task 1's `Cargo.toml`; the `zip` dependency (production) is also already present. No `Cargo.toml` change needed for this task — confirm with:
 ```bash
@@ -657,7 +657,7 @@ grep -E '^(zip|mockito) = ' crates/mlai-core/Cargo.toml
 ```
 Expected: both lines present (added in Task 1).
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `crates/mlai-core/src/fetch.rs`:
 ```rust
@@ -727,12 +727,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test fetch::`
 Expected: FAIL to compile — module `fetch` doesn't exist yet.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/fetch.rs`:
 ```rust
@@ -820,12 +820,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod fetch;
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test fetch::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/fetch.rs crates/mlai-core/src/lib.rs
@@ -844,7 +844,7 @@ git commit -m "feat(mlai-core): add HTTP fetch and zip unpack with top-level ren
 - Consumes: `mlai_core::manifest::{Component, SetupCommand}` (Task 1), `mlai_core::state::{InstalledState, ComponentRecord, ComponentState}` (Task 2), `mlai_core::backup::{backup_component, prune_backups}` (Task 3), `mlai_core::health::{check_health, HealthStatus}` (Task 4), `mlai_core::fetch::{Fetcher, unpack_zip}` (Task 5).
 - Produces: `mlai_core::pipeline::{PipelineOptions, install_component, PipelineError}`. `PipelineOptions<'a> { install_root: PathBuf, fetcher: &'a dyn Fetcher, version: String, backup_keep: usize }`. `install_component(component: &Component, opts: &PipelineOptions) -> Result<ComponentState, PipelineError>` — runs fetch → unpack → (backup if a live install exists) → setup → health, persisting `InstalledState` after every stage; short-circuits to the existing state when the component is already `Healthy` at the requested `version`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/pipeline.rs`:
 ```rust
@@ -973,12 +973,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test pipeline::`
 Expected: FAIL to compile — module `pipeline` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/pipeline.rs`:
 ```rust
@@ -1091,17 +1091,17 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod pipeline;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test pipeline::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 5: Run the full mlai-core suite**
+- [x] **Step 5: Run the full mlai-core suite**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: PASS — all tests across manifest, state, backup, health, fetch, pipeline (16 tests total).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/pipeline.rs crates/mlai-core/src/lib.rs
@@ -1123,7 +1123,7 @@ git commit -m "feat(mlai-core): wire fetch/unpack/backup/setup/health into insta
 - Consumes: `mlai_core::manifest::Manifest` (Task 1), `mlai_core::fetch::HttpFetcher` (Task 5), `mlai_core::pipeline::{install_component, PipelineOptions}` (Task 6), `mlai_core::state::ComponentState` (Task 2).
 - Produces: `mlai` binary with `mlai install --manifest <path> --install-root <dir> [--component <name>]`.
 
-- [ ] **Step 1: Create the crate skeleton**
+- [x] **Step 1: Create the crate skeleton**
 
 `crates/mlai-cli/Cargo.toml`:
 ```toml
@@ -1197,7 +1197,7 @@ cargo build --workspace
 ```
 Expected: FAIL — `commands::install::run` not found (file created next step).
 
-- [ ] **Step 2: Write the failing integration test**
+- [x] **Step 2: Write the failing integration test**
 
 `crates/mlai-cli/tests/install.rs`:
 ```rust
@@ -1310,12 +1310,12 @@ default = true
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `cargo test --workspace`
 Expected: FAIL to compile — `crates/mlai-cli/src/commands/install.rs` doesn't exist yet.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 `crates/mlai-cli/src/commands/install.rs`:
 ```rust
@@ -1370,12 +1370,12 @@ pub fn run(manifest_path: &Path, install_root: &Path, component_name: Option<&st
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — all `mlai-core` unit tests plus both `mlai-cli` integration tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -1392,7 +1392,7 @@ git commit -m "feat(mlai-cli): add install command wired to the mlai-core pipeli
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -1403,7 +1403,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS. If `cargo fmt` fails, run `cargo fmt --all` and re-check; if `cargo clippy` reports warnings, fix them before proceeding (per `docs/CONSTITUTION.md` §5, all four must pass before commit).
 
-- [ ] **Step 2: Write `docs/USAGE.md`**
+- [x] **Step 2: Write `docs/USAGE.md`**
 
 `docs/USAGE.md`:
 ```markdown
@@ -1474,7 +1474,7 @@ cloud config generation are planned follow-ups — see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
@@ -1489,6 +1489,8 @@ gh pr create --title "feat: local install engine (mlai-core + mlai-cli)" --body 
 gh pr checks <pr-number> --watch
 ```
 Expected: the `test` check passes, and its log (via the printed Actions URL) shows `cargo fmt`/`clippy`/`test`/`build` actually executing — not the "No Rust workspace yet" no-op branch from `.github/workflows/ci.yml`, since `Cargo.toml` now exists at the repo root.
+
+**Not executed for this goal (dropped for this goal, not deferred to a future version):** this is a TA-mediated goal — the agent's changes are reviewed and integrated via TA's own draft/apply flow, not by the agent pushing directly and opening a PR itself (the goal's task instructions explicitly call for "never commit directly to main... not pushed directly"). CI verification of the real (non-no-op) path should happen once TA applies this work back to the source repo and it is pushed/PR'd through the normal human-mediated flow described in the root `CLAUDE.md`.
 
 ---
 
