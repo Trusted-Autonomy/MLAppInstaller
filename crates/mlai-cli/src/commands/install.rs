@@ -11,6 +11,7 @@ pub fn run(
     install_root: &Path,
     component_name: Option<&str>,
     set_options: &[(String, String)],
+    force: bool,
 ) -> Result<()> {
     let manifest_str = fs::read_to_string(manifest_path)
         .with_context(|| format!("reading manifest at {}", manifest_path.display()))?;
@@ -50,7 +51,7 @@ pub fn run(
             version: component.component_ref.clone(),
             backup_keep: 3,
             set_options: set_options.to_vec(),
-            force: false,
+            force,
         };
         let result = install_component(component, &manifest, &opts)
             .with_context(|| format!("installing component '{}'", component.name))?;

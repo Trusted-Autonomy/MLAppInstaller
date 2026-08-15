@@ -28,6 +28,18 @@ enum Commands {
         /// Only valid for components with supports_options_protocol = true.
         #[arg(long = "set", value_parser = parse_set_option)]
         set: Vec<(String, String)>,
+        /// Reinstall even components already healthy at their current version
+        #[arg(long)]
+        force: bool,
+    },
+    /// Re-verify installed components against disk and fix any that are broken
+    Repair {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        install_root: PathBuf,
+        #[arg(long)]
+        component: Option<String>,
     },
     /// Remove all installed components
     Uninstall {
@@ -59,7 +71,13 @@ fn main() -> anyhow::Result<()> {
             install_root,
             component,
             set,
-        } => commands::install::run(&manifest, &install_root, component.as_deref(), &set),
+            force,
+        } => commands::install::run(&manifest, &install_root, component.as_deref(), &set, force),
+        Commands::Repair {
+            manifest,
+            install_root,
+            component,
+        } => commands::repair::run(&manifest, &install_root, component.as_deref()),
         Commands::Uninstall {
             manifest,
             install_root,

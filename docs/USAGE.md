@@ -65,6 +65,35 @@ Prompts for confirmation unless `--yes` is passed (never prompts when
 `--dry-run` is also given — dry-run is always safe to run non-interactively).
 Removes every component named in the manifest plus `<install-root>/.mlai-install`.
 
+## Repairing
+
+`mlai repair` re-verifies every component directly against disk, ignoring
+whatever `installed.json` has recorded — the fix for a component a plain
+re-run of `install` would silently keep trusting even after something on
+disk broke it by hand:
+
+```bash
+mlai repair --manifest manifest.toml --install-root ~/my-app
+```
+
+A genuinely healthy component is left completely untouched (no download, no
+setup re-run). A broken one goes through the same backup-then-reinstall
+sequence `install` uses.
+
+## Forcing a reinstall
+
+```bash
+mlai install --manifest manifest.toml --install-root ~/my-app --force
+```
+
+Reinstalls every selected component from `source_url` regardless of its
+recorded state — the same backup-before-overwrite safety as a normal
+install, just without the "already healthy, skip" shortcut. This is the
+generic form of "get whatever is currently being served" — detecting that
+a specific *newer* version exists upstream (vs. blindly re-pulling
+`source_url`) isn't implemented yet; see
+`docs/superpowers/specs/2026-08-14-foundation-design.md` for status.
+
 ## Install state
 
 State is written to `<install-root>/.mlai-install/installed.json` after
@@ -114,6 +143,7 @@ using it. This design is on hold pending further exploration.
 
 ## Not yet implemented
 
-`repair`, `update`, cloud config generation, and the credential-source glue
+Remote-version detection (upgrade because something changed upstream, not
+just `--force`), cloud config generation, and the credential-source glue
 layer are planned follow-ups — see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`.
