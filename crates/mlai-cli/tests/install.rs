@@ -1,9 +1,15 @@
 use assert_cmd::Command;
 use predicates::str::contains;
 use std::fs;
+#[cfg(unix)]
 use std::io::Write;
 use tempfile::tempdir;
 
+// This fixture's component declares only a posix setup script — on Windows,
+// setup_for_current_os() returns None (no [components.setup.windows] entry),
+// so setup never runs and the health check would correctly fail. Gated to
+// unix until a Windows-native fixture is worth building.
+#[cfg(unix)]
 fn build_fixture_zip(path: &std::path::Path) {
     let file = fs::File::create(path).unwrap();
     let mut zip = zip::ZipWriter::new(file);
@@ -16,6 +22,7 @@ fn build_fixture_zip(path: &std::path::Path) {
 }
 
 #[test]
+#[cfg(unix)]
 fn install_command_installs_default_components_and_reports_healthy() {
     let mut server = mockito::Server::new();
     let zip_dir = tempdir().unwrap();

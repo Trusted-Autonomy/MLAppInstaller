@@ -182,6 +182,9 @@ path = "marker.txt"
 
     #[test]
     fn supports_options_protocol_parses_when_present() {
+        // Both platforms declared true so this assertion holds regardless of
+        // which OS actually runs the test — a single-platform value would
+        // make this test's expected outcome depend on the CI runner's OS.
         let toml = r#"
 manifest_version = "1.0.0"
 
@@ -193,13 +196,14 @@ default = true
 
 [components.supports_options_protocol]
 posix = true
+windows = true
 "#;
         let manifest = Manifest::parse(toml).unwrap();
         assert!(manifest.components[0].supports_options_protocol_for_current_os());
     }
 
     #[test]
-    fn setup_for_current_os_is_none_when_only_the_other_platform_is_declared() {
+    fn setup_for_current_os_selects_only_the_matching_platform_entry() {
         let toml = r#"
 manifest_version = "1.0.0"
 
@@ -214,9 +218,16 @@ command = "powershell"
 args = ["-File", "setup.ps1"]
 "#;
         let manifest = Manifest::parse(toml).unwrap();
-        // This suite runs on ubuntu-latest, so "current OS" is posix — the
-        // windows-only setup entry must not be selected.
-        assert!(manifest.components[0].setup_for_current_os().is_none());
+        let setup = manifest.components[0].setup_for_current_os();
+        // The manifest declares ONLY a windows entry — on Windows it must be
+        // selected, on any other OS it must not leak across the platform
+        // boundary. Runs correctly on every CI platform, unlike a test that
+        // hardcodes an assumption about which OS it happens to run on.
+        if cfg!(target_os = "windows") {
+            assert_eq!(setup.unwrap().command, "powershell");
+        } else {
+            assert!(setup.is_none());
+        }
     }
 
     #[test]

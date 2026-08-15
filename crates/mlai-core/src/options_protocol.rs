@@ -138,7 +138,13 @@ fn parse_descriptor(command: &str, output: &str) -> Result<OptionsDescriptor, Op
     })
 }
 
-#[cfg(test)]
+// This module's tests spawn `sh` against `#!/bin/sh` fixture scripts, so
+// they only make sense on unix — a faithful Windows equivalent would need
+// its own cmd/PowerShell fixtures, which is real work deferred until a
+// component actually needs Windows setup-command testing. Windows CI still
+// verifies this crate compiles and its non-shell tests (manifest, state,
+// backup, health, fetch, removals, versioning) run for real.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::manifest::SetupCommand;
