@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Rust workspace
+        id: workspace
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.workspace.outputs.exists == 'true'
+        with:
+          components: rustfmt, clippy
+
+      - name: cargo fmt --check
+        if: steps.workspace.outputs.exists == 'true'
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        if: steps.workspace.outputs.exists == 'true'
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        if: steps.workspace.outputs.exists == 'true'
+        run: cargo test --workspace
+
+      - name: cargo build
+        if: steps.workspace.outputs.exists == 'true'
+        run: cargo build --workspace
+
+      - name: No Rust workspace yet
+        if: steps.workspace.outputs.exists == 'false'
+        run: echo "No Cargo.toml yet (scaffolding phase) — CI is a no-op until the Rust workspace lands, per docs/CONSTITUTION.md §5."
