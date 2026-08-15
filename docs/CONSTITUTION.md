@@ -29,7 +29,7 @@ Components, backend options (local vs. hosted model choices), and cloud provider
 **Why this rule exists**: this project exists specifically to stop TA, CinePipe, and future consumers from each hardcoding their own component list into their own installer. The same failure mode one level down (hardcoding a component's *options* or a cloud *provider*) would just recreate the problem this project was built to solve.
 
 ### 1.6 Reuse Before Reinventing
-Before adding a new manifest field, protocol, or crate, check whether cinepipe-installer's Setup Options Protocol, TA's `ta-credentials` vault, or an existing MLAppInstaller abstraction already covers the need. Extend it, or justify in the PR why a new mechanism is required.
+Before adding a new manifest field, protocol, or crate, check whether cinepipe-installer's Setup Options Protocol, cinepipe-installer's `feat/unified-rust-installer` branch (manifest, backup, health, versioning, cleanup — proven, tested Rust ports of the same orchestration this project also implements), or an existing MLAppInstaller abstraction already covers the need. Extend it, or justify in the PR why a new mechanism is required. This applies to secrets management too: reuse an existing credential tool (OS keychain, 1Password, Vault) via §2's credential-source-reference pattern rather than building a new store.
 
 ### 1.7 Single Cross-Platform Codebase
 One Rust implementation, cross-compiled for Windows/macOS/Linux. No maintained per-OS script twins. This is the specific duplication (cinepipe's `install.ps1`/`install.sh` pair) this project exists to eliminate — reintroducing it anywhere in this codebase is a constitution violation.
@@ -38,11 +38,13 @@ One Rust implementation, cross-compiled for Windows/macOS/Linux. No maintained p
 
 ## 2. Credential & Secrets Handling
 
-### 2.1 Vault-Only Storage
-Hosted-model API keys and any other secret are never written to disk in plaintext. They go through `mlai-credentials` (age encryption, OS-keychain-first custody), the same pattern as `ta-credentials`, generalized to a caller-supplied keyring namespace.
+### 2.1 The Installer Never Touches Secret Values
+`mlai` does not store, manage, broker, or ever see a hosted-model API key or any other secret. It may collect and pass through a *credential-source reference* (e.g. "read this from the OS keychain, service X" or "from 1Password item Y") via the backend-options protocol's `--set key=value`, but resolving that reference into an actual secret value is entirely the responsibility of the component's own setup command. An installer that stores secret values is solving a problem (broker credentials to processes, revocation, TTLs) that already has better-built tools (OS keychains, 1Password, Vault) — reinventing it here would violate §1.6 (Reuse Before Reinventing) against the very tools this rule points to.
 
-### 2.2 Fallback Custody Is Disclosed, Never Silent
-When the OS keychain is unreachable and the vault falls back to a chmod-0600 file, that weaker guarantee is surfaced loudly to the user (equivalent to `ta doctor`), not just logged at debug level.
+**Why this rule exists**: an earlier draft of this project (Plan B, since reverted) built an installer-owned encrypted vault (`mlai-credentials`, ported from TA's `ta-credentials`) and a `mlai credential set` command. That pattern is right for TA — a long-running agent runtime brokering scoped, revocable credentials to untrusted agent processes — and wrong for an installer, which runs once and exits. Corrected 2026-08-15; see `docs/superpowers/specs/2026-08-15-credential-source-glue-design.md` for the on-hold replacement design.
+
+### 2.2 Credential-Source Glue Is a Future, Separate Design
+The "point at where the secret lives" mechanism described in §2.1 is not yet designed in detail — see the design-exploration doc referenced above. Until that design is approved, no component should be built assuming a specific credential-source protocol beyond the generic `--set key=value` passthrough that already exists.
 
 ---
 

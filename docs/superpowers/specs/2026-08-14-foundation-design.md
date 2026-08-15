@@ -3,6 +3,8 @@
 **Status**: Approved 2026-08-14 (architecture confirmed by user; ready for implementation planning)
 **Supersedes**: TA `PLAN.md` roadmap item `v0.18.2 — Extract ta-package + Cross-Platform Installer` (see "Relationship to TA's roadmap" below)
 
+**Amendment, 2026-08-15**: the `mlai-credentials` crate described below (an installer-owned encrypted vault, ported from TA's `ta-credentials`) was built, then reverted — an installer that stores secret values is solving the wrong problem; see `docs/CONSTITUTION.md` §2.1 and `docs/superpowers/specs/2026-08-15-credential-source-glue-design.md` for the corrected, on-hold direction (the installer passes through a credential *reference* via the existing backend-options protocol; it never touches the value). References to `mlai-credentials` below are historical context for that decision, not current architecture. The same day, a mature, tested Rust installer implementation was found on cinepipe-installer's `feat/unified-rust-installer` branch — its proven algorithms (guarded removals, repair, per-platform setup/health) are being ported into `mlai-core` rather than re-derived from scratch; see that plan's own notes for what's ported vs. generalized.
+
 ## Problem
 
 Two real, working Rust-based installers solve overlapping pieces of the same problem

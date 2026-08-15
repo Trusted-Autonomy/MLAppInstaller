@@ -77,20 +77,17 @@ existing `--set key=value` convention (see
 
 ## Credentials
 
-Hosted-model API keys and other secrets are never stored in plaintext.
-`mlai credential set <key>` stores a value (read from stdin) in an
-age-encrypted vault, using the OS keychain when available and falling back
-to a chmod-0600 file otherwise (with a loud warning when that fallback is
-used):
-
-```bash
-echo "sk-your-api-key" | mlai credential set openai-api-key
-```
-
-**Known v1 limitation**: stdin input is not hidden (no `*` masking) — avoid
-running this on a shared terminal. A proper hidden-input UX is a follow-up.
+`mlai` does not store, manage, or ever see hosted-model API keys or other
+secrets — that's out of scope for an installer by design. See
+`docs/superpowers/specs/2026-08-15-credential-source-glue-design.md` for the
+planned (not yet implemented) approach: a component declares what
+credential it needs, `--set <key>_source=...` tells it *where* to find that
+credential (OS keychain, 1Password, Vault, an env var, ...), and the
+component's own setup command is entirely responsible for resolving and
+using it. This design is on hold pending further exploration.
 
 ## Not yet implemented
 
-`repair`, `uninstall`, `update`, and cloud config generation are planned
-follow-ups — see `docs/superpowers/specs/2026-08-14-foundation-design.md`.
+`repair`, `uninstall`, `update`, cloud config generation, and the
+credential-source glue layer above are planned follow-ups — see
+`docs/superpowers/specs/2026-08-14-foundation-design.md`.

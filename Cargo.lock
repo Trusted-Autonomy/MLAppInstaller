@@ -1940,7 +1940,6 @@ dependencies = [
  "assert_cmd",
  "clap",
  "mlai-core",
- "mlai-credentials",
  "mockito",
  "predicates",
  "tempfile",
