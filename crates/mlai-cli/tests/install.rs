@@ -148,3 +148,73 @@ default = true
         .failure()
         .stderr(contains("does not declare supports_options_protocol"));
 }
+
+#[cfg(unix)]
+#[test]
+fn install_command_force_reinstalls_even_when_already_healthy() {
+    let mut server = mockito::Server::new();
+    let zip_dir = tempdir().unwrap();
+    let zip_path = zip_dir.path().join("bundle.zip");
+    build_fixture_zip(&zip_path);
+    let zip_bytes = fs::read(&zip_path).unwrap();
+
+    let mock = server
+        .mock("GET", "/hello-component.zip")
+        .with_status(200)
+        .with_body(zip_bytes)
+        .expect(2) // one real install, one forced reinstall
+        .create();
+
+    let manifest_dir = tempdir().unwrap();
+    let manifest_path = manifest_dir.path().join("manifest.toml");
+    fs::write(
+        &manifest_path,
+        format!(
+            r#"
+manifest_version = "1.0.0"
+
+[[components]]
+name = "hello-component"
+source_url = "{}/hello-component.zip"
+ref = "main"
+default = true
+
+[components.setup.posix]
+command = "sh"
+args = ["setup.sh"]
+
+[components.health.posix]
+type = "file_exists"
+path = "marker.txt"
+"#,
+            server.url()
+        ),
+    )
+    .unwrap();
+
+    let install_root = tempdir().unwrap();
+
+    let mut first = Command::cargo_bin("mlai").unwrap();
+    first
+        .arg("install")
+        .arg("--manifest")
+        .arg(&manifest_path)
+        .arg("--install-root")
+        .arg(install_root.path());
+    first.assert().success();
+
+    let mut forced = Command::cargo_bin("mlai").unwrap();
+    forced
+        .arg("install")
+        .arg("--manifest")
+        .arg(&manifest_path)
+        .arg("--install-root")
+        .arg(install_root.path())
+        .arg("--force");
+    forced
+        .assert()
+        .success()
+        .stdout(contains("hello-component -> healthy"));
+
+    mock.assert(); // fails the test if the second GET never happened
+}

@@ -411,7 +411,7 @@ git commit -m "feat(mlai-core): add repair_component (ported from cinepipe-insta
 - Consumes: `mlai_core::pipeline::repair_component` (Task 2), `mlai_core::manifest::Manifest` (Plan A).
 - Produces: `mlai repair --manifest <path> --install-root <dir> [--component <name>]`.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 `crates/mlai-cli/tests/repair.rs`:
 ```rust
@@ -546,12 +546,12 @@ default = true
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --workspace`
 Expected: FAIL to compile — `crates/mlai-cli/src/commands/repair.rs` doesn't exist yet, and the CLI has no `repair` subcommand.
 
-- [ ] **Step 3: Write `commands/repair.rs`**
+- [x] **Step 3: Write `commands/repair.rs`**
 
 `crates/mlai-cli/src/commands/repair.rs`:
 ```rust
@@ -617,7 +617,7 @@ pub mod repair;
 pub mod uninstall;
 ```
 
-- [ ] **Step 4: Wire the CLI subcommand**
+- [x] **Step 4: Wire the CLI subcommand**
 
 In `crates/mlai-cli/src/main.rs`, add to the `Commands` enum (after `Install`):
 ```rust
@@ -639,12 +639,17 @@ And to the `match cli.command` block:
         }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS. Note: `repair_fixes_a_component_broken_on_disk` is `#[cfg(unix)]`-gated (its fixture uses `sh`); `repair_reports_already_healthy_without_reinstalling` runs on every platform.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
+
+Note: this session runs inside TA's staging workflow, per this goal's injected
+instructions — TA diffs the staging workspace and builds a review draft on
+exit rather than the agent committing directly, so no `git commit` was run
+here. The commit happens as part of the draft's apply step.
 
 ```bash
 git add crates/mlai-cli
@@ -663,7 +668,7 @@ git commit -m "feat(mlai-cli): add repair command"
 **Interfaces:**
 - Produces: `mlai install ... --force` — forces reinstall of every selected component regardless of recorded state.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 Add to `crates/mlai-cli/tests/install.rs` (after `install_command_rejects_set_for_a_component_without_protocol_support`), gated the same way as the file's other sh-dependent test:
 ```rust
@@ -738,12 +743,12 @@ path = "marker.txt"
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --workspace`
 Expected: FAIL — `--force` isn't a recognized flag yet (clap reports an unknown argument), and `mock.assert()` would fail even if it were, since `PipelineOptions.force` isn't wired to anything yet.
 
-- [ ] **Step 3: Wire the flag**
+- [x] **Step 3: Wire the flag**
 
 In `crates/mlai-cli/src/main.rs`, add to the `Install` variant:
 ```rust
@@ -785,12 +790,12 @@ pub fn run(
 ```
 and change the `PipelineOptions { .. }` literal's `force: false,` (from Task 1) to `force,`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — including the new force-reinstall test, which asserts (via `mock.assert()`) that the download endpoint was actually hit twice.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -806,7 +811,7 @@ git commit -m "feat(mlai-cli): add install --force"
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -817,7 +822,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add after the "Uninstalling" section:
 ```markdown
@@ -861,14 +866,17 @@ layer are planned follow-ups — see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
+
+Note: same as Task 3/4's commit steps — no `git commit` was run in this
+TA-mediated staging session; TA's draft/apply flow handles integration.
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document repair and install --force"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run: `cargo test --workspace`
 Expected: PASS on the local platform. CI verifies all three (ubuntu-latest, macos-latest, windows-latest) once pushed.
