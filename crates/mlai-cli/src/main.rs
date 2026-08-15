@@ -29,6 +29,19 @@ enum Commands {
         #[arg(long = "set", value_parser = parse_set_option)]
         set: Vec<(String, String)>,
     },
+    /// Remove all installed components
+    Uninstall {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        install_root: PathBuf,
+        /// Skip the confirmation prompt
+        #[arg(long)]
+        yes: bool,
+        /// Report what would be removed without deleting anything
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 fn parse_set_option(s: &str) -> Result<(String, String), String> {
@@ -47,5 +60,11 @@ fn main() -> anyhow::Result<()> {
             component,
             set,
         } => commands::install::run(&manifest, &install_root, component.as_deref(), &set),
+        Commands::Uninstall {
+            manifest,
+            install_root,
+            yes,
+            dry_run,
+        } => commands::uninstall::run(&manifest, &install_root, yes, dry_run),
     }
 }

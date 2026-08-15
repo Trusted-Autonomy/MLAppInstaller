@@ -4,6 +4,32 @@ use serde::{Deserialize, Serialize};
 pub struct Manifest {
     pub manifest_version: String,
     pub components: Vec<Component>,
+    #[serde(default)]
+    pub removals: Vec<RemovalEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
+pub struct PlatformSetup {
+    #[serde(default)]
+    pub windows: Option<SetupCommand>,
+    #[serde(default)]
+    pub posix: Option<SetupCommand>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
+pub struct PlatformHealth {
+    #[serde(default)]
+    pub windows: Option<HealthCheck>,
+    #[serde(default)]
+    pub posix: Option<HealthCheck>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
+pub struct PlatformFlag {
+    #[serde(default)]
+    pub windows: bool,
+    #[serde(default)]
+    pub posix: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -14,10 +40,40 @@ pub struct Component {
     pub component_ref: String,
     #[serde(default)]
     pub default: bool,
-    pub setup: Option<SetupCommand>,
-    pub health: Option<HealthCheck>,
     #[serde(default)]
-    pub supports_options_protocol: bool,
+    pub setup: PlatformSetup,
+    #[serde(default)]
+    pub health: PlatformHealth,
+    #[serde(default)]
+    pub supports_options_protocol: PlatformFlag,
+}
+
+impl Component {
+    /// This platform's setup command, or `None` if this component has no
+    /// setup script for the OS `mlai` is running on.
+    pub fn setup_for_current_os(&self) -> Option<&SetupCommand> {
+        if cfg!(target_os = "windows") {
+            self.setup.windows.as_ref()
+        } else {
+            self.setup.posix.as_ref()
+        }
+    }
+
+    pub fn health_for_current_os(&self) -> Option<&HealthCheck> {
+        if cfg!(target_os = "windows") {
+            self.health.windows.as_ref()
+        } else {
+            self.health.posix.as_ref()
+        }
+    }
+
+    pub fn supports_options_protocol_for_current_os(&self) -> bool {
+        if cfg!(target_os = "windows") {
+            self.supports_options_protocol.windows
+        } else {
+            self.supports_options_protocol.posix
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -31,6 +87,12 @@ pub struct SetupCommand {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum HealthCheck {
     FileExists { path: String },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct RemovalEntry {
+    pub version: String,
+    pub paths: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -66,11 +128,11 @@ source_url = "https://example.com/hello-component.zip"
 ref = "main"
 default = true
 
-[components.setup]
+[components.setup.posix]
 command = "setup.sh"
 args = []
 
-[components.health]
+[components.health.posix]
 type = "file_exists"
 path = "marker.txt"
 "#;
@@ -84,9 +146,10 @@ path = "marker.txt"
         assert_eq!(c.name, "hello-component");
         assert!(c.default);
         assert_eq!(c.component_ref, "main");
-        assert_eq!(c.setup.as_ref().unwrap().command, "setup.sh");
+        assert_eq!(c.setup.posix.as_ref().unwrap().command, "setup.sh");
+        assert!(c.setup.windows.is_none());
         assert_eq!(
-            c.health.as_ref().unwrap(),
+            c.health.posix.as_ref().unwrap(),
             &HealthCheck::FileExists {
                 path: "marker.txt".into()
             }
@@ -114,7 +177,7 @@ path = "marker.txt"
     #[test]
     fn supports_options_protocol_defaults_to_false_when_absent() {
         let manifest = Manifest::parse(SAMPLE).unwrap();
-        assert!(!manifest.components[0].supports_options_protocol);
+        assert!(!manifest.components[0].supports_options_protocol_for_current_os());
     }
 
     #[test]
@@ -127,9 +190,62 @@ name = "hello-component"
 source_url = "https://example.com/hello-component.zip"
 ref = "main"
 default = true
-supports_options_protocol = true
+
+[components.supports_options_protocol]
+posix = true
 "#;
         let manifest = Manifest::parse(toml).unwrap();
-        assert!(manifest.components[0].supports_options_protocol);
+        assert!(manifest.components[0].supports_options_protocol_for_current_os());
+    }
+
+    #[test]
+    fn setup_for_current_os_is_none_when_only_the_other_platform_is_declared() {
+        let toml = r#"
+manifest_version = "1.0.0"
+
+[[components]]
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
+ref = "main"
+default = true
+
+[components.setup.windows]
+command = "powershell"
+args = ["-File", "setup.ps1"]
+"#;
+        let manifest = Manifest::parse(toml).unwrap();
+        // This suite runs on ubuntu-latest, so "current OS" is posix — the
+        // windows-only setup entry must not be selected.
+        assert!(manifest.components[0].setup_for_current_os().is_none());
+    }
+
+    #[test]
+    fn removals_default_to_empty_when_absent() {
+        let manifest = Manifest::parse(SAMPLE).unwrap();
+        assert!(manifest.removals.is_empty());
+    }
+
+    #[test]
+    fn removals_parse_when_present() {
+        let toml = r#"
+manifest_version = "1.1.0"
+
+[[components]]
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
+ref = "main"
+default = true
+
+[[removals]]
+version = "1.1.0"
+paths = ["hello-component/legacy_tool.py"]
+"#;
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(manifest.removals.len(), 1);
+        assert_eq!(manifest.removals[0].version, "1.1.0");
+        assert_eq!(
+            manifest.removals[0].paths,
+            vec!["hello-component/legacy_tool.py"]
+        );
     }
 }

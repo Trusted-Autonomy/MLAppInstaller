@@ -37,7 +37,7 @@ pub fn run(
     };
 
     for component in components {
-        if !set_options.is_empty() && !component.supports_options_protocol {
+        if !set_options.is_empty() && !component.supports_options_protocol_for_current_os() {
             bail!(
                 "--set was provided but component '{}' does not declare supports_options_protocol = true in the manifest",
                 component.name
@@ -51,7 +51,7 @@ pub fn run(
             backup_keep: 3,
             set_options: set_options.to_vec(),
         };
-        let result = install_component(component, &opts)
+        let result = install_component(component, &manifest, &opts)
             .with_context(|| format!("installing component '{}'", component.name))?;
         match result {
             ComponentState::Healthy => println!("  {} -> healthy", component.name),

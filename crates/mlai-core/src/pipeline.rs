@@ -34,9 +34,26 @@ pub struct PipelineOptions<'a> {
 
 pub fn install_component(
     component: &Component,
+    manifest: &crate::manifest::Manifest,
     opts: &PipelineOptions,
 ) -> Result<ComponentState, PipelineError> {
     let mut state = InstalledState::load(&opts.install_root)?;
+
+    let previous_manifest_version = if state.manifest_version.is_empty() {
+        None
+    } else {
+        Some(state.manifest_version.clone())
+    };
+    crate::removals::apply_removals(
+        &manifest.removals,
+        previous_manifest_version.as_deref(),
+        &opts.install_root,
+        false,
+    );
+    if state.manifest_version != manifest.manifest_version {
+        state.manifest_version = manifest.manifest_version.clone();
+        state.save(&opts.install_root)?;
+    }
 
     let existing_version = state
         .components
@@ -66,12 +83,12 @@ pub fn install_component(
     let component_dir = unpack_zip(&zip_path, &opts.install_root, &component.name)?;
     record_state(&mut state, opts, component, ComponentState::Unpacked)?;
 
-    if let Some(setup) = &component.setup {
+    if let Some(setup) = component.setup_for_current_os() {
         run_setup(&component_dir, setup, &opts.set_options)?;
     }
     record_state(&mut state, opts, component, ComponentState::SetupRun)?;
 
-    let final_state = match check_health(&component_dir, component.health.as_ref()) {
+    let final_state = match check_health(&component_dir, component.health_for_current_os()) {
         HealthStatus::Healthy => ComponentState::Healthy,
         HealthStatus::NeedsAttention(_) => ComponentState::NeedsAttention,
     };
@@ -129,7 +146,9 @@ fn run_setup(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manifest::{Component, HealthCheck, SetupCommand};
+    use crate::manifest::{
+        Component, HealthCheck, Manifest, PlatformFlag, PlatformHealth, PlatformSetup, SetupCommand,
+    };
     use std::fs;
     use std::io::Write;
     use std::path::Path;
@@ -166,14 +185,20 @@ mod tests {
             source_url: "https://example.com/hello-component.zip".into(),
             component_ref: "main".into(),
             default: true,
-            setup: Some(SetupCommand {
-                command: "sh".into(),
-                args: vec!["setup.sh".into()],
-            }),
-            health: Some(HealthCheck::FileExists {
-                path: "marker.txt".into(),
-            }),
-            supports_options_protocol: false,
+            setup: PlatformSetup {
+                windows: None,
+                posix: Some(SetupCommand {
+                    command: "sh".into(),
+                    args: vec!["setup.sh".into()],
+                }),
+            },
+            health: PlatformHealth {
+                windows: None,
+                posix: Some(HealthCheck::FileExists {
+                    path: "marker.txt".into(),
+                }),
+            },
+            supports_options_protocol: PlatformFlag::default(),
         }
     }
 
@@ -185,6 +210,11 @@ mod tests {
         build_fixture_zip(&zip_path);
 
         let component = sample_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
         let fetcher = FixtureFetcher { zip_path };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -194,7 +224,7 @@ mod tests {
             set_options: vec![],
         };
 
-        let result = install_component(&component, &opts).unwrap();
+        let result = install_component(&component, &manifest, &opts).unwrap();
         assert_eq!(result, ComponentState::Healthy);
 
         let state = InstalledState::load(root.path()).unwrap();
@@ -211,6 +241,11 @@ mod tests {
         build_fixture_zip(&zip_path);
 
         let component = sample_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
         let fetcher = FixtureFetcher { zip_path };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -219,13 +254,13 @@ mod tests {
             backup_keep: 3,
             set_options: vec![],
         };
-        install_component(&component, &opts).unwrap();
+        install_component(&component, &manifest, &opts).unwrap();
 
         // Remove the setup script so a real re-run would fail — proves the
         // second call short-circuits instead of re-running setup.
         fs::remove_file(root.path().join("hello-component").join("setup.sh")).unwrap();
 
-        let result = install_component(&component, &opts).unwrap();
+        let result = install_component(&component, &manifest, &opts).unwrap();
         assert_eq!(result, ComponentState::Healthy);
     }
 
@@ -237,6 +272,11 @@ mod tests {
         build_fixture_zip(&zip_path);
 
         let component = sample_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
         let fetcher = FixtureFetcher { zip_path };
         let opts_v1 = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -245,7 +285,7 @@ mod tests {
             backup_keep: 3,
             set_options: vec![],
         };
-        install_component(&component, &opts_v1).unwrap();
+        install_component(&component, &manifest, &opts_v1).unwrap();
 
         let opts_v2 = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -254,7 +294,7 @@ mod tests {
             backup_keep: 3,
             set_options: vec![],
         };
-        install_component(&component, &opts_v2).unwrap();
+        install_component(&component, &manifest, &opts_v2).unwrap();
 
         let backups_dir = root.path().join(".mlai-install").join("backups");
         assert!(backups_dir.join("v1").join("hello-component").exists());
@@ -280,7 +320,12 @@ mod tests {
         build_fixture_zip_recording_args(&zip_path);
 
         let mut component = sample_component();
-        component.supports_options_protocol = true;
+        component.supports_options_protocol.posix = true;
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
 
         let fetcher = FixtureFetcher { zip_path };
         let opts = PipelineOptions {
@@ -291,10 +336,70 @@ mod tests {
             set_options: vec![("model".to_string(), "qwen3:14b".to_string())],
         };
 
-        install_component(&component, &opts).unwrap();
+        install_component(&component, &manifest, &opts).unwrap();
 
         let recorded_args =
             fs::read_to_string(root.path().join("hello-component").join("args.txt")).unwrap();
         assert!(recorded_args.contains("--set model=qwen3:14b"));
+    }
+
+    #[test]
+    fn removals_older_than_the_manifest_are_applied_on_reinstall() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let component = sample_component();
+        let fetcher = FixtureFetcher { zip_path };
+
+        // First install at manifest_version "1.0.0" — leaves a legacy file behind
+        // that a later manifest version will mark for removal.
+        let manifest_v1 = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+        };
+        install_component(&component, &manifest_v1, &opts).unwrap();
+        fs::write(
+            root.path().join("hello-component").join("legacy_tool.py"),
+            "old",
+        )
+        .unwrap();
+
+        // Second install at manifest_version "1.1.0", which declares that file
+        // deprecated as of 1.1.0 — must be removed by this install.
+        let manifest_v2 = Manifest {
+            manifest_version: "1.1.0".into(),
+            components: vec![component.clone()],
+            removals: vec![mlai_core_removal_entry(
+                "1.1.0",
+                "hello-component/legacy_tool.py",
+            )],
+        };
+        install_component(&component, &manifest_v2, &opts).unwrap();
+
+        assert!(!root
+            .path()
+            .join("hello-component")
+            .join("legacy_tool.py")
+            .exists());
+
+        let state = InstalledState::load(root.path()).unwrap();
+        assert_eq!(state.manifest_version, "1.1.0");
+    }
+
+    fn mlai_core_removal_entry(version: &str, path: &str) -> crate::manifest::RemovalEntry {
+        crate::manifest::RemovalEntry {
+            version: version.to_string(),
+            paths: vec![path.to_string()],
+        }
     }
 }
