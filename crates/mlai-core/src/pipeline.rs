@@ -30,6 +30,7 @@ pub struct PipelineOptions<'a> {
     pub version: String,
     pub backup_keep: usize,
     pub set_options: Vec<(String, String)>,
+    pub force: bool,
 }
 
 pub fn install_component(
@@ -37,8 +38,49 @@ pub fn install_component(
     manifest: &crate::manifest::Manifest,
     opts: &PipelineOptions,
 ) -> Result<ComponentState, PipelineError> {
-    let mut state = InstalledState::load(&opts.install_root)?;
+    let mut state = apply_removals_and_persist_manifest_version(manifest, opts)?;
 
+    if !opts.force {
+        if let Some(existing) = state.components.get(&component.name) {
+            if existing.version == opts.version && existing.state == ComponentState::Healthy {
+                return Ok(ComponentState::Healthy);
+            }
+        }
+    }
+
+    run_install_sequence(component, &mut state, opts)
+}
+
+/// Re-verifies a component's health directly against disk, ignoring any
+/// recorded state in `installed.json` entirely — unlike `install_component`'s
+/// trust-based shortcut, which skips reinstalling based on the record alone.
+/// This is what a manually deleted or corrupted health target needs: a
+/// plain re-install would silently skip it forever (the record still says
+/// "healthy"), but repair always asks the filesystem directly. Returns
+/// `(state, reinstalled)` — `reinstalled` is `false` when the component was
+/// found genuinely healthy and zero filesystem changes were made.
+pub fn repair_component(
+    component: &Component,
+    manifest: &crate::manifest::Manifest,
+    opts: &PipelineOptions,
+) -> Result<(ComponentState, bool), PipelineError> {
+    let mut state = apply_removals_and_persist_manifest_version(manifest, opts)?;
+
+    let component_dir = opts.install_root.join(&component.name);
+    let genuinely_healthy = component_dir.exists()
+        && check_health(&component_dir, component.health_for_current_os()) == HealthStatus::Healthy;
+    if genuinely_healthy {
+        return Ok((ComponentState::Healthy, false));
+    }
+
+    run_install_sequence(component, &mut state, opts).map(|final_state| (final_state, true))
+}
+
+fn apply_removals_and_persist_manifest_version(
+    manifest: &crate::manifest::Manifest,
+    opts: &PipelineOptions,
+) -> Result<InstalledState, PipelineError> {
+    let mut state = InstalledState::load(&opts.install_root)?;
     let previous_manifest_version = if state.manifest_version.is_empty() {
         None
     } else {
@@ -54,16 +96,18 @@ pub fn install_component(
         state.manifest_version = manifest.manifest_version.clone();
         state.save(&opts.install_root)?;
     }
+    Ok(state)
+}
 
+fn run_install_sequence(
+    component: &Component,
+    state: &mut InstalledState,
+    opts: &PipelineOptions,
+) -> Result<ComponentState, PipelineError> {
     let existing_version = state
         .components
         .get(&component.name)
         .map(|r| r.version.clone());
-    if let Some(existing) = state.components.get(&component.name) {
-        if existing.version == opts.version && existing.state == ComponentState::Healthy {
-            return Ok(ComponentState::Healthy);
-        }
-    }
 
     let component_dir = opts.install_root.join(&component.name);
     if component_dir.exists() {
@@ -78,21 +122,21 @@ pub fn install_component(
         .join("downloads")
         .join(format!("{}.zip", component.name));
     opts.fetcher.fetch(&component.source_url, &zip_path)?;
-    record_state(&mut state, opts, component, ComponentState::Downloaded)?;
+    record_state(state, opts, component, ComponentState::Downloaded)?;
 
     let component_dir = unpack_zip(&zip_path, &opts.install_root, &component.name)?;
-    record_state(&mut state, opts, component, ComponentState::Unpacked)?;
+    record_state(state, opts, component, ComponentState::Unpacked)?;
 
     if let Some(setup) = component.setup_for_current_os() {
         run_setup(&component_dir, setup, &opts.set_options)?;
     }
-    record_state(&mut state, opts, component, ComponentState::SetupRun)?;
+    record_state(state, opts, component, ComponentState::SetupRun)?;
 
     let final_state = match check_health(&component_dir, component.health_for_current_os()) {
         HealthStatus::Healthy => ComponentState::Healthy,
         HealthStatus::NeedsAttention(_) => ComponentState::NeedsAttention,
     };
-    record_state(&mut state, opts, component, final_state)?;
+    record_state(state, opts, component, final_state)?;
 
     Ok(final_state)
 }
@@ -229,6 +273,7 @@ mod tests {
             version: "abc123".into(),
             backup_keep: 3,
             set_options: vec![],
+            force: false,
         };
 
         let result = install_component(&component, &manifest, &opts).unwrap();
@@ -260,6 +305,7 @@ mod tests {
             version: "abc123".into(),
             backup_keep: 3,
             set_options: vec![],
+            force: false,
         };
         install_component(&component, &manifest, &opts).unwrap();
 
@@ -291,6 +337,7 @@ mod tests {
             version: "v1".into(),
             backup_keep: 3,
             set_options: vec![],
+            force: false,
         };
         install_component(&component, &manifest, &opts_v1).unwrap();
 
@@ -300,6 +347,7 @@ mod tests {
             version: "v2".into(),
             backup_keep: 3,
             set_options: vec![],
+            force: false,
         };
         install_component(&component, &manifest, &opts_v2).unwrap();
 
@@ -341,6 +389,7 @@ mod tests {
             version: "abc123".into(),
             backup_keep: 3,
             set_options: vec![("model".to_string(), "qwen3:14b".to_string())],
+            force: false,
         };
 
         install_component(&component, &manifest, &opts).unwrap();
@@ -373,6 +422,7 @@ mod tests {
             version: "abc123".into(),
             backup_keep: 3,
             set_options: vec![],
+            force: false,
         };
         install_component(&component, &manifest_v1, &opts).unwrap();
         fs::write(
@@ -403,10 +453,189 @@ mod tests {
         assert_eq!(state.manifest_version, "1.1.0");
     }
 
+    #[test]
+    fn force_bypasses_the_already_healthy_short_circuit() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let component = sample_component();
+        let fetcher = FixtureFetcher { zip_path };
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&component, &manifest, &opts).unwrap();
+
+        // Break health without changing the recorded state — a plain
+        // (non-forced) re-run must still trust the record and leave the
+        // break in place.
+        fs::remove_file(root.path().join("hello-component").join("marker.txt")).unwrap();
+        let result = install_component(&component, &manifest, &opts).unwrap();
+        assert_eq!(result, ComponentState::Healthy);
+        assert!(
+            !root
+                .path()
+                .join("hello-component")
+                .join("marker.txt")
+                .exists(),
+            "force: false must not touch disk when the record says healthy"
+        );
+
+        let forced_opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: true,
+        };
+        let result = install_component(&component, &manifest, &forced_opts).unwrap();
+        assert_eq!(result, ComponentState::Healthy);
+        assert!(
+            root.path()
+                .join("hello-component")
+                .join("marker.txt")
+                .exists(),
+            "force: true must bypass the short-circuit and actually reinstall"
+        );
+    }
+
     fn mlai_core_removal_entry(version: &str, path: &str) -> crate::manifest::RemovalEntry {
         crate::manifest::RemovalEntry {
             version: version.to_string(),
             paths: vec![path.to_string()],
         }
+    }
+
+    #[test]
+    fn repair_reinstalls_when_disk_is_broken_despite_recorded_healthy_state() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let component = sample_component();
+        let fetcher = FixtureFetcher { zip_path };
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&component, &manifest, &opts).unwrap();
+
+        // Real bug this guards: installed.json says healthy, but the health
+        // target is missing from disk (e.g. a user deleted it by hand).
+        fs::remove_file(root.path().join("hello-component").join("marker.txt")).unwrap();
+
+        let (state_after, reinstalled) = repair_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(state_after, ComponentState::Healthy);
+        assert!(
+            reinstalled,
+            "repair must have gone through a real reinstall"
+        );
+        assert!(
+            root.path()
+                .join("hello-component")
+                .join("marker.txt")
+                .exists(),
+            "repair should have fixed the health target"
+        );
+    }
+
+    #[test]
+    fn repair_makes_zero_filesystem_changes_when_genuinely_healthy_even_with_no_recorded_state() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        // Deliberately never build a fixture zip — repair must never reach
+        // the download step for a genuinely healthy component.
+        let zip_path = fixture_dir.path().join("bundle.zip");
+
+        let component = sample_component();
+        let component_dir = root.path().join("hello-component");
+        fs::create_dir_all(&component_dir).unwrap();
+        fs::write(component_dir.join("marker.txt"), "real marker").unwrap();
+
+        let fetcher = FixtureFetcher { zip_path };
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        // Deliberately no prior install_component call — installed.json has
+        // no record for this component at all. Repair must decide from disk.
+        let (state_after, reinstalled) = repair_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(state_after, ComponentState::Healthy);
+        assert!(
+            !reinstalled,
+            "a genuinely healthy component must not be reinstalled"
+        );
+        assert!(
+            !root.path().join(".mlai-install").join("backups").exists(),
+            "repair must not back up a genuinely healthy component"
+        );
+    }
+
+    #[test]
+    fn repair_reinstalls_when_the_component_directory_does_not_exist() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let component = sample_component();
+        let fetcher = FixtureFetcher { zip_path };
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        let (state_after, reinstalled) = repair_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(state_after, ComponentState::Healthy);
+        assert!(reinstalled);
+        assert!(root
+            .path()
+            .join("hello-component")
+            .join("marker.txt")
+            .exists());
     }
 }

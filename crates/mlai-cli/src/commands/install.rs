@@ -50,6 +50,7 @@ pub fn run(
             version: component.component_ref.clone(),
             backup_keep: 3,
             set_options: set_options.to_vec(),
+            force: false,
         };
         let result = install_component(component, &manifest, &opts)
             .with_context(|| format!("installing component '{}'", component.name))?;
