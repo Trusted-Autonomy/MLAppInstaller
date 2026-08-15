@@ -20,11 +20,11 @@ source_url = "https://example.com/hello-component.zip"
 ref = "main"
 default = true
 
-[components.setup]
+[components.setup.posix]
 command = "setup.sh"
 args = []
 
-[components.health]
+[components.health.posix]
 type = "file_exists"
 path = "marker.txt"
 ```
@@ -33,11 +33,37 @@ path = "marker.txt"
   top-level folder is renamed to the component's `name` after extraction.
 - `ref` — recorded as the installed version; used to detect whether a
   re-run needs to reinstall.
-- `setup` — optional command run inside the unpacked component directory
-  after unpack.
-- `health` — optional check run after setup; today supports `file_exists`.
-  A component with no `health` block is always considered healthy once
-  setup succeeds.
+- `setup`/`health`/`supports_options_protocol` are per-platform (`posix`/
+  `windows`) — `mlai` picks the entry matching the OS it's running on. A
+  component with no entry for the current OS simply has no setup/health/
+  options step on that platform. A component with no `health` block at all
+  is always considered healthy once setup succeeds.
+
+## Removals (legacy cleanup)
+
+A manifest can declare `[[removals]]` entries — paths to delete once an
+install crosses a given `manifest_version`:
+
+```toml
+[[removals]]
+version = "1.1.0"
+paths = ["hello-component/legacy_tool.py"]
+```
+
+Applied automatically during `mlai install` when the previously-recorded
+`manifest_version` is older than an entry's `version`. Every path is
+validated to resolve inside the install root before removal — a malformed
+or malicious manifest can never delete anything outside it.
+
+## Uninstalling
+
+```bash
+mlai uninstall --manifest manifest.toml --install-root ~/my-app
+```
+
+Prompts for confirmation unless `--yes` is passed (never prompts when
+`--dry-run` is also given — dry-run is always safe to run non-interactively).
+Removes every component named in the manifest plus `<install-root>/.mlai-install`.
 
 ## Install state
 
@@ -88,6 +114,6 @@ using it. This design is on hold pending further exploration.
 
 ## Not yet implemented
 
-`repair`, `uninstall`, `update`, cloud config generation, and the
-credential-source glue layer above are planned follow-ups — see
+`repair`, `update`, cloud config generation, and the credential-source glue
+layer are planned follow-ups — see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`.

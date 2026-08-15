@@ -43,11 +43,11 @@ source_url = "{}/hello-component.zip"
 ref = "main"
 default = true
 
-[components.setup]
+[components.setup.posix]
 command = "sh"
 args = ["setup.sh"]
 
-[components.health]
+[components.health.posix]
 type = "file_exists"
 path = "marker.txt"
 "#,

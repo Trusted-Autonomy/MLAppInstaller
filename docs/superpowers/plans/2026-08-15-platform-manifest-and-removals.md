@@ -39,7 +39,7 @@
 
 **Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/manifest.rs`'s `PlatformSetup`/`PlatformHealth`/`PlatformFlag`/`setup_for_current_os`/`health_for_current_os`/`supports_options_protocol_for_current_os` — field names generalized from their PascalCase-JSON (`Setup`/`Health`/`SupportsOptionsProtocol`) to this project's existing snake_case/TOML convention; the `windows`/`posix` split and the `cfg!(target_os = ...)` selection logic are unchanged.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `crates/mlai-core/src/manifest.rs`, replace the existing `SAMPLE` constant and its dependent tests with:
 ```rust
@@ -144,12 +144,12 @@ args = ["-File", "setup.ps1"]
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test manifest::`
 Expected: FAIL to compile — `PlatformSetup`, `PlatformHealth`, `setup_for_current_os`, `health_for_current_os`, `supports_options_protocol_for_current_os` don't exist yet; the existing `Component` struct's fields don't match the new TOML shape.
 
-- [ ] **Step 3: Retrofit the manifest types**
+- [x] **Step 3: Retrofit the manifest types**
 
 In `crates/mlai-core/src/manifest.rs`, replace the `Component` struct and add the new platform types:
 ```rust
@@ -223,12 +223,12 @@ impl Component {
 ```
 (This replaces the old flat `pub setup: Option<SetupCommand>`, `pub health: Option<HealthCheck>`, `pub supports_options_protocol: bool` fields entirely.)
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test manifest::`
 Expected: FAIL — this compiles now, but `pipeline.rs` and `mlai-cli` don't, since they still reference the old field shapes. Continue to the next steps before expecting a full pass.
 
-- [ ] **Step 5: Fix `pipeline.rs`'s call sites and test fixtures**
+- [x] **Step 5: Fix `pipeline.rs`'s call sites and test fixtures**
 
 In `crates/mlai-core/src/pipeline.rs`, change:
 ```rust
@@ -293,7 +293,7 @@ to:
         component.supports_options_protocol.posix = true;
 ```
 
-- [ ] **Step 6: Fix `mlai-cli`'s call site**
+- [x] **Step 6: Fix `mlai-cli`'s call site**
 
 In `crates/mlai-cli/src/commands/install.rs`, change:
 ```rust
@@ -304,7 +304,7 @@ to:
         if !set_options.is_empty() && !component.supports_options_protocol_for_current_os() {
 ```
 
-- [ ] **Step 7: Fix the integration test's TOML fixture**
+- [x] **Step 7: Fix the integration test's TOML fixture**
 
 In `crates/mlai-cli/tests/install.rs`, in `install_command_installs_default_components_and_reports_healthy`, change:
 ```toml
@@ -327,12 +327,12 @@ type = "file_exists"
 path = "marker.txt"
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
+- [x] **Step 8: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — all tests across the workspace, including the new manifest tests from Step 1.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add crates/mlai-core/src/manifest.rs crates/mlai-core/src/pipeline.rs crates/mlai-cli/src/commands/install.rs crates/mlai-cli/tests/install.rs
@@ -352,7 +352,7 @@ git commit -m "feat(mlai-core): retrofit manifest for per-platform setup/health 
 
 **Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/versioning.rs`'s `compare_version` — verbatim algorithm (element-wise dotted-integer comparison, non-numeric segments treated as 0, shorter side implicitly zero-padded). `remote_version`/`extract_commit_sha`/the `Installed` JSON-schema types are NOT ported here — they belong to the deferred `mlai update` plan.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/versioning.rs`:
 ```rust
@@ -390,12 +390,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test versioning::`
 Expected: FAIL to compile — module `versioning` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/versioning.rs`:
 ```rust
@@ -432,12 +432,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod versioning;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test versioning::`
 Expected: PASS — 5 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-core/src/versioning.rs crates/mlai-core/src/lib.rs
@@ -459,7 +459,7 @@ git commit -m "feat(mlai-core): add dotted-version comparison (ported from cinep
 
 **Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/cleanup.rs`'s `safe_target` and `apply_removals` — verbatim algorithm, including the component-by-component path resolution that fixes a real prefix-confusion vulnerability present in their own PowerShell original (documented in that file's header comment). `RemovalEntry` generalized from their PascalCase JSON (`Version`/`Paths`) to this project's snake_case/TOML fields.
 
-- [ ] **Step 1: Add `RemovalEntry` and the manifest field**
+- [x] **Step 1: Add `RemovalEntry` and the manifest field**
 
 In `crates/mlai-core/src/manifest.rs`, add after the `HealthCheck` enum:
 ```rust
@@ -514,7 +514,7 @@ paths = ["hello-component/legacy_tool.py"]
 Run: `cd crates/mlai-core && cargo test manifest::removals`
 Expected: PASS — both new tests (the `#[serde(default)]` field parses with zero code beyond the struct/field additions).
 
-- [ ] **Step 2: Write the failing test for the removals module**
+- [x] **Step 2: Write the failing test for the removals module**
 
 `crates/mlai-core/src/removals.rs`:
 ```rust
@@ -671,12 +671,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test removals::`
 Expected: FAIL to compile — module `removals` doesn't exist yet.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/removals.rs`:
 ```rust
@@ -777,12 +777,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod removals;
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test removals::`
 Expected: PASS — 9 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/manifest.rs crates/mlai-core/src/removals.rs crates/mlai-core/src/lib.rs
@@ -802,7 +802,7 @@ git commit -m "feat(mlai-core): add guarded removals (ported from cinepipe-insta
 
 **Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/cleanup.rs`'s `clean_install`/`remove_orphaned_components` — verbatim algorithm, `.cinepipe-install`/`venv` reserved names generalized to `.mlai-install` (matching this project's existing state-directory name from Plan A) with `venv` kept as a second reserved name (a shared virtualenv directory is a plausible cross-component convention worth preserving, matching cinepipe's own).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `crates/mlai-core/src/removals.rs`'s existing `#[cfg(test)] mod tests` block:
 ```rust
@@ -904,12 +904,12 @@ Append to `crates/mlai-core/src/removals.rs`'s existing `#[cfg(test)] mod tests`
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test removals::`
 Expected: FAIL to compile — `clean_install`/`remove_orphaned_components` don't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Append to `crates/mlai-core/src/removals.rs` (after `apply_removals`, before the `#[cfg(test)]` module):
 ```rust
@@ -987,17 +987,17 @@ pub fn remove_orphaned_components(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test removals::`
 Expected: PASS — 14 tests total in this module (9 from Task 3 + 5 new).
 
-- [ ] **Step 5: Run the full mlai-core suite**
+- [x] **Step 5: Run the full mlai-core suite**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: PASS — all modules green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/removals.rs
@@ -1018,7 +1018,7 @@ git commit -m "feat(mlai-core): add full uninstall + orphaned-component cleanup 
 - Consumes: `mlai_core::manifest::Manifest` (Plan A), `mlai_core::removals::clean_install` (Task 4).
 - Produces: `mlai uninstall --manifest <path> --install-root <dir> [--yes] [--dry-run]`.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 `crates/mlai-cli/tests/uninstall.rs`:
 ```rust
@@ -1110,12 +1110,12 @@ fn uninstall_without_yes_or_a_tty_fails_clearly_rather_than_hanging() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --workspace`
 Expected: FAIL to compile — `crates/mlai-cli/src/commands/uninstall.rs` doesn't exist yet, and the CLI doesn't have an `uninstall` subcommand.
 
-- [ ] **Step 3: Write `commands/uninstall.rs`**
+- [x] **Step 3: Write `commands/uninstall.rs`**
 
 `crates/mlai-cli/src/commands/uninstall.rs`:
 ```rust
@@ -1175,7 +1175,7 @@ pub mod install;
 pub mod uninstall;
 ```
 
-- [ ] **Step 4: Wire the CLI subcommand**
+- [x] **Step 4: Wire the CLI subcommand**
 
 In `crates/mlai-cli/src/main.rs`, add to the `Commands` enum (after `Install`):
 ```rust
@@ -1201,12 +1201,12 @@ And add to the `match cli.command` block:
         }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS. Note: the third test (`uninstall_without_yes_or_a_tty_fails_clearly_rather_than_hanging`) relies on `assert_cmd`'s subprocess having no TTY attached by default (true for CI and for `Command::cargo_bin` in general) — `is_terminal()` returns `false`, so the bail path triggers instead of the interactive prompt blocking the test.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -1224,7 +1224,7 @@ git commit -m "feat(mlai-cli): add uninstall command with confirmation and --dry
 - Consumes: `mlai_core::removals::apply_removals` (Task 3), `mlai_core::manifest::Manifest` (for `removals` and `manifest_version`).
 - Produces: `install_component`'s signature changes to accept the full `Manifest` (for its `removals` and `manifest_version`) rather than only a single `Component` — see Step 3 for the exact new signature. `InstalledState.manifest_version` is now written on every successful install.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-core/src/pipeline.rs`'s existing `#[cfg(test)] mod tests` block:
 ```rust
@@ -1301,12 +1301,12 @@ Add `Manifest` to this test module's imports:
     use crate::manifest::{Component, HealthCheck, Manifest, PlatformFlag, PlatformHealth, PlatformSetup, SetupCommand};
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test pipeline::`
 Expected: FAIL to compile — `install_component` doesn't accept a `Manifest` argument yet.
 
-- [ ] **Step 3: Update `install_component`'s signature and body**
+- [x] **Step 3: Update `install_component`'s signature and body**
 
 In `crates/mlai-core/src/pipeline.rs`, change the function signature:
 ```rust
@@ -1338,7 +1338,7 @@ Insert this block immediately after `let mut state = InstalledState::load(&opts.
 
 `record_state` itself needs no changes — leave its signature and the four existing call sites exactly as they are.
 
-- [ ] **Step 4: Fix the now-broken call site in mlai-cli**
+- [x] **Step 4: Fix the now-broken call site in mlai-cli**
 
 In `crates/mlai-cli/src/commands/install.rs`, change:
 ```rust
@@ -1349,12 +1349,12 @@ to:
         let result = install_component(component, &manifest, &opts)
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — all tests, including the new removals-on-reinstall test.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-core/src/pipeline.rs crates/mlai-cli/src/commands/install.rs
@@ -1370,7 +1370,7 @@ git commit -m "feat(mlai-core): apply guarded removals during install, persist m
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -1381,7 +1381,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS. Fix any findings before proceeding.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Replace the manifest-format code block's `[components.setup]`/`[components.health]` sections with the per-platform shape, and add an "Uninstalling" section plus a "Removals (legacy cleanup)" section. Replace the existing manifest format block:
 ```markdown
@@ -1451,14 +1451,14 @@ layer are planned follow-ups — see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document per-platform setup, removals, and uninstall"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run: `cargo test --workspace`
 Expected: PASS. Approximate total test count: `mlai-core` grows to ~48 (27 from Plan B + 6 new manifest tests + 5 versioning + 14 removals − 4 replaced pipeline-signature tests re-passing + 1 new removals-on-reinstall test — exact count isn't load-bearing, all green is), `mlai-credentials` unchanged at 9, `mlai-cli` grows by 3 (`uninstall.rs`).
