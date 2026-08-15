@@ -143,7 +143,14 @@ fn run_setup(
     Ok(())
 }
 
-#[cfg(test)]
+// This module's fixtures declare `sample_component()`'s setup as a posix-only
+// `sh` script (`windows: None`), so on a Windows test run `setup_for_current_os()`
+// returns None, the fixture's marker/args files never get created, and the
+// pipeline's own health check would then correctly (but unhelpfully) fail —
+// these tests exercise a POSIX fixture, not a Windows one. Gated to unix until
+// a Windows-native fixture is worth building. Windows CI still verifies this
+// crate compiles and its non-shell tests run for real.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::manifest::{
