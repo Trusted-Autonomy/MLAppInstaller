@@ -29,21 +29,6 @@ enum Commands {
         #[arg(long = "set", value_parser = parse_set_option)]
         set: Vec<(String, String)>,
     },
-    /// Manage stored credentials (hosted-model API keys, etc.)
-    Credential {
-        #[command(subcommand)]
-        action: CredentialAction,
-    },
-}
-
-#[derive(Subcommand)]
-enum CredentialAction {
-    /// Store a secret value (read from stdin) under the given key
-    Set {
-        key: String,
-        #[arg(long)]
-        vault_dir: Option<PathBuf>,
-    },
 }
 
 fn parse_set_option(s: &str) -> Result<(String, String), String> {
@@ -62,8 +47,5 @@ fn main() -> anyhow::Result<()> {
             component,
             set,
         } => commands::install::run(&manifest, &install_root, component.as_deref(), &set),
-        Commands::Credential { action } => match action {
-            CredentialAction::Set { key, vault_dir } => commands::credential::set(&key, vault_dir),
-        },
     }
 }
