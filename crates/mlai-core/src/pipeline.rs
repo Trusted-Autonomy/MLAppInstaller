@@ -29,6 +29,7 @@ pub struct PipelineOptions<'a> {
     pub fetcher: &'a dyn Fetcher,
     pub version: String,
     pub backup_keep: usize,
+    pub set_options: Vec<(String, String)>,
 }
 
 pub fn install_component(
@@ -66,7 +67,7 @@ pub fn install_component(
     record_state(&mut state, opts, component, ComponentState::Unpacked)?;
 
     if let Some(setup) = &component.setup {
-        run_setup(&component_dir, setup)?;
+        run_setup(&component_dir, setup, &opts.set_options)?;
     }
     record_state(&mut state, opts, component, ComponentState::SetupRun)?;
 
@@ -98,9 +99,18 @@ fn record_state(
     Ok(())
 }
 
-fn run_setup(component_dir: &Path, setup: &SetupCommand) -> Result<(), PipelineError> {
+fn run_setup(
+    component_dir: &Path,
+    setup: &SetupCommand,
+    set_options: &[(String, String)],
+) -> Result<(), PipelineError> {
+    let mut args = setup.args.clone();
+    for (key, value) in set_options {
+        args.push("--set".to_string());
+        args.push(format!("{key}={value}"));
+    }
     let status = Command::new(&setup.command)
-        .args(&setup.args)
+        .args(&args)
         .current_dir(component_dir)
         .status()
         .map_err(|source| PipelineError::SetupLaunch {
@@ -163,6 +173,7 @@ mod tests {
             health: Some(HealthCheck::FileExists {
                 path: "marker.txt".into(),
             }),
+            supports_options_protocol: false,
         }
     }
 
@@ -180,6 +191,7 @@ mod tests {
             fetcher: &fetcher,
             version: "abc123".into(),
             backup_keep: 3,
+            set_options: vec![],
         };
 
         let result = install_component(&component, &opts).unwrap();
@@ -205,6 +217,7 @@ mod tests {
             fetcher: &fetcher,
             version: "abc123".into(),
             backup_keep: 3,
+            set_options: vec![],
         };
         install_component(&component, &opts).unwrap();
 
@@ -230,6 +243,7 @@ mod tests {
             fetcher: &fetcher,
             version: "v1".into(),
             backup_keep: 3,
+            set_options: vec![],
         };
         install_component(&component, &opts_v1).unwrap();
 
@@ -238,10 +252,49 @@ mod tests {
             fetcher: &fetcher,
             version: "v2".into(),
             backup_keep: 3,
+            set_options: vec![],
         };
         install_component(&component, &opts_v2).unwrap();
 
         let backups_dir = root.path().join(".mlai-install").join("backups");
         assert!(backups_dir.join("v1").join("hello-component").exists());
+    }
+
+    fn build_fixture_zip_recording_args(path: &Path) {
+        let file = fs::File::create(path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        zip.add_directory("hello-component-main/", options).unwrap();
+        zip.start_file("hello-component-main/setup.sh", options)
+            .unwrap();
+        zip.write_all(b"#!/bin/sh\necho \"$@\" > args.txt\ntouch marker.txt\n")
+            .unwrap();
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn set_options_are_appended_as_set_flags_to_setup() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_recording_args(&zip_path);
+
+        let mut component = sample_component();
+        component.supports_options_protocol = true;
+
+        let fetcher = FixtureFetcher { zip_path };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![("model".to_string(), "qwen3:14b".to_string())],
+        };
+
+        install_component(&component, &opts).unwrap();
+
+        let recorded_args =
+            fs::read_to_string(root.path().join("hello-component").join("args.txt")).unwrap();
+        assert!(recorded_args.contains("--set model=qwen3:14b"));
     }
 }

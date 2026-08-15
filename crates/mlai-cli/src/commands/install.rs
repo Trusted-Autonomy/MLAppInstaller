@@ -6,7 +6,12 @@ use mlai_core::state::ComponentState;
 use std::fs;
 use std::path::Path;
 
-pub fn run(manifest_path: &Path, install_root: &Path, component_name: Option<&str>) -> Result<()> {
+pub fn run(
+    manifest_path: &Path,
+    install_root: &Path,
+    component_name: Option<&str>,
+    set_options: &[(String, String)],
+) -> Result<()> {
     let manifest_str = fs::read_to_string(manifest_path)
         .with_context(|| format!("reading manifest at {}", manifest_path.display()))?;
     let manifest = Manifest::parse(&manifest_str)
@@ -32,12 +37,19 @@ pub fn run(manifest_path: &Path, install_root: &Path, component_name: Option<&st
     };
 
     for component in components {
+        if !set_options.is_empty() && !component.supports_options_protocol {
+            bail!(
+                "--set was provided but component '{}' does not declare supports_options_protocol = true in the manifest",
+                component.name
+            );
+        }
         println!("Installing {}...", component.name);
         let opts = PipelineOptions {
             install_root: install_root.to_path_buf(),
             fetcher: &fetcher,
             version: component.component_ref.clone(),
             backup_keep: 3,
+            set_options: set_options.to_vec(),
         };
         let result = install_component(component, &opts)
             .with_context(|| format!("installing component '{}'", component.name))?;

@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 mlai-core = { path = "../mlai-core" }
+mlai-credentials = { path = "../mlai-credentials" }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 
