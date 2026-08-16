@@ -1,0 +1,11 @@
+body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 640px; }
+.muted { color: #666; font-size: 0.9em; }
+.hidden { display: none; }
+.component-row { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.5rem 0; }
+.component-title { font-weight: 600; }
+.component-notes { font-size: 0.85em; }
+.model-option-row { margin: 0.5rem 0; }
+.model-option-label { font-size: 0.9em; margin-bottom: 0.25rem; }
+#log-view { background: #111; color: #ddd; padding: 1rem; height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; }
+.status-ok { color: #2a7; }
+.status-fail { color: #c33; }

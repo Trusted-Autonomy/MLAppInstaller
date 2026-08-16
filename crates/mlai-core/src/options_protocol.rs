@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
@@ -6,13 +6,13 @@ use std::time::Duration;
 
 use crate::manifest::SetupCommand;
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct OptionsDescriptor {
     pub schema_version: u32,
     pub options: Vec<OptionSpec>,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OptionSpec {
     Choice {
@@ -28,7 +28,7 @@ pub enum OptionSpec {
     },
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ChoiceValue {
     pub value: String,
     pub label: String,

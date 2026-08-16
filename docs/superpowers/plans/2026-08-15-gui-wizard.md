@@ -319,7 +319,7 @@ git commit -m "feat(mlai-gui): scaffold Tauri crate + list_components command"
 **Interfaces:**
 - Produces: `mlai_core::paths::default_install_root() -> PathBuf` (new, small, platform-specific: `<home>/.mlai/install` on unix, `<LOCALAPPDATA>/mlai/install` on Windows). Tauri commands `default_install_root(app) -> Result<String, String>` and `read_install_status(install_root: Option<String>) -> Result<mlai_core::state::InstalledState, String>`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/paths.rs`:
 ```rust
@@ -347,12 +347,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test paths::`
 Expected: FAIL to compile — module `paths` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/paths.rs`:
 ```rust
@@ -378,12 +378,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod paths;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test paths::`
 Expected: PASS — 2 tests.
 
-- [ ] **Step 5: Wire the two Tauri commands**
+- [x] **Step 5: Wire the two Tauri commands**
 
 In `crates/mlai-gui/src-tauri/src/lib.rs`, add:
 ```rust
@@ -411,17 +411,18 @@ Update the `invoke_handler` registration in `run()`:
         ])
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — all tests across the workspace.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add crates/mlai-core/src/paths.rs crates/mlai-core/src/lib.rs crates/mlai-gui/src-tauri/src/lib.rs
 git commit -m "feat(mlai-gui): add default_install_root and read_install_status commands"
 ```
+(No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
 ---
 
@@ -434,7 +435,7 @@ git commit -m "feat(mlai-gui): add default_install_root and read_install_status 
 - Consumes: `mlai_core::options_protocol::describe_options` (existing), `mlai_core::manifest::Manifest::find_component` (existing).
 - Produces: Tauri command `describe_component_options(app, component: String, install_root: Option<String>) -> Result<Option<mlai_core::options_protocol::OptionsDescriptor>, String>`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-gui/src-tauri/src/lib.rs`'s test module:
 ```rust
@@ -472,12 +473,12 @@ Add to `crates/mlai-gui/src-tauri/src/lib.rs`'s test module:
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-gui/src-tauri && cargo test`
 Expected: FAIL to compile — `describe_options_for` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add to `crates/mlai-gui/src-tauri/src/lib.rs`, above the test module:
 ```rust
@@ -529,17 +530,24 @@ Update `invoke_handler`:
         ])
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+Deviation note: `mlai_core::options_protocol::OptionsDescriptor`/`OptionSpec`/`ChoiceValue`
+only derived `Deserialize` before this task; a Tauri command's return type must
+implement `Serialize` to satisfy `IpcResponse`. Added `Serialize` to all three
+types' derives (minimal fix, no field/shape changes) so `describe_component_options`
+compiles.
+
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-gui/src-tauri/src/lib.rs
 git commit -m "feat(mlai-gui): add describe_component_options command"
 ```
+(No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
 ---
 
@@ -552,7 +560,7 @@ git commit -m "feat(mlai-gui): add describe_component_options command"
 - Consumes: `mlai_core::pipeline::{install_component, repair_component, PipelineOptions}` (existing), `mlai_core::fetch::HttpFetcher` (existing).
 - Produces: Tauri command `run_install(app, components: Vec<String>, install_root: Option<String>, mode: String, options: HashMap<String, HashMap<String, String>>) -> Result<(), String>`. Emits `"install-log"` (String payload, one per component start/result) and `"install-done"` (`{success: bool, message: String}`) events. `mode` is `"install"` (plain), `"force"` (force reinstall), or `"repair"`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-gui/src-tauri/src/lib.rs`'s test module:
 ```rust
@@ -583,12 +591,12 @@ Add to `crates/mlai-gui/src-tauri/src/lib.rs`'s test module:
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-gui/src-tauri && cargo test`
 Expected: FAIL to compile — `ComponentResult`, `summarize_results` don't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add to `crates/mlai-gui/src-tauri/src/lib.rs`, above the test module:
 ```rust
@@ -736,17 +744,18 @@ Update `invoke_handler`:
         ])
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-gui/src-tauri/src/lib.rs
 git commit -m "feat(mlai-gui): add run_install command with install/force/repair modes"
 ```
+(No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
 ---
 
@@ -759,7 +768,7 @@ git commit -m "feat(mlai-gui): add run_install command with install/force/repair
 
 **Interfaces:** none new (TypeScript, no Rust test cycle — see Global Constraints on GUI test posture).
 
-- [ ] **Step 1: Write `index.html`'s body markup**
+- [x] **Step 1: Write `index.html`'s body markup**
 
 Replace `crates/mlai-gui/index.html`'s `<body>` with the form structure the frontend expects (ported from cinepipe's wizard markup, re-skinned generic):
 ```html
@@ -796,7 +805,7 @@ Replace `crates/mlai-gui/index.html`'s `<body>` with the form structure the fron
 ```
 (Remove the separate `<script>` tag from `<head>` if duplicated — `index.html` should have exactly one.)
 
-- [ ] **Step 2: Write `src/styles.css`**
+- [x] **Step 2: Write `src/styles.css`**
 
 `crates/mlai-gui/src/styles.css`:
 ```css
@@ -813,7 +822,7 @@ body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 640px; }
 .status-fail { color: #c33; }
 ```
 
-- [ ] **Step 3: Write `src/main.ts`**
+- [x] **Step 3: Write `src/main.ts`**
 
 `crates/mlai-gui/src/main.ts` — ported from cinepipe's `wizard/src/main.ts`, with these changes from the original: `Component`/`Manifest` TypeScript interfaces switched to this project's snake_case field names (`name`/`source_url`/`component_ref`/`default` — no `notes` field, since `mlai-core`'s `Component` doesn't have one yet); all `add_project`/project-binding code removed (dropped per this plan's scope); the mode selector's `"clean"` value renamed to `"force"` to match `run_install`'s actual mode strings; `ComponentResult`/`InstallOutcome` simplified to this project's flat `{name, outcome, message}` shape instead of cinepipe's externally-tagged enum enum enum shape:
 ```typescript
@@ -1115,12 +1124,20 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 ```
 
-- [ ] **Step 4: Verify the Rust workspace still builds**
+Deviation note: swapped the single em dash in the "Already installed here ..."
+status string for a plain hyphen, per this agent's standing writing-style
+instruction against em dashes in any output. Content-only change, no behavior
+or test impact (this file has no automated test by design).
+
+- [x] **Step 4: Verify the Rust workspace still builds**
 
 Run: `cargo build --workspace`
 Expected: succeeds (this task is TypeScript-only; verifying nothing else regressed).
 
-- [ ] **Step 5: Manual smoke verification**
+- [ ] **Step 5: Manual smoke verification** - not performed in this TA-mediated
+staging session per explicit goal instruction ("do not attempt to run npm install
+or a Tauri dev build yourself"); left unchecked as genuinely not done, matching
+this plan's own accepted manual-verification posture for the GUI frontend.
 
 Run:
 ```bash
@@ -1128,12 +1145,13 @@ cd crates/mlai-gui && npm install && npm run tauri dev
 ```
 Expected: a window opens showing "MLAppInstaller", loads (or reports a clear "manifest.toml not found" if none is present at the repo root — expected until a real manifest exists there), and the mode dropdown/install button render without console errors. This is the one step in this plan that isn't automatable — matches cinepipe's own accepted manual-verification posture for the frontend (see Global Constraints).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-gui/index.html crates/mlai-gui/src
 git commit -m "feat(mlai-gui): port frontend from cinepipe-installer, re-skinned generic"
 ```
+(No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
 ---
 
@@ -1144,7 +1162,7 @@ git commit -m "feat(mlai-gui): port frontend from cinepipe-installer, re-skinned
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -1155,7 +1173,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add a new top-level section:
 ```markdown
@@ -1177,12 +1195,13 @@ distribution-packaging framework (`docs/superpowers/specs/2026-08-15-distributio
 is for — not covered here.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document the GUI wizard"
 ```
+(No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
 ---
 
