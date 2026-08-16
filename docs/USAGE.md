@@ -130,6 +130,43 @@ component's setup command, verbatim compatible with cinepipe-installer's
 existing `--set key=value` convention (see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`).
 
+## Model catalog
+
+A component that needs a decision like "which local model fits this
+machine" can defer to a shared catalog instead of inventing its own
+hardware-tier table. Multiple sub-projects can each contribute a fragment
+without a central authority — a purpose declares an `owner`; a fragment
+that only *references* a purpose (no `[[tiers]]`) never conflicts, but two
+fragments that *define* the same purpose differently is a hard error, not
+a silent pick:
+
+```toml
+# fragment owned by cinepipe-stories
+[purposes.text-structured-json]
+owner = "cinepipe-stories"
+
+[[purposes.text-structured-json.tiers]]
+min_vram_gb = 24
+model = "qwen3:32b"
+
+[[purposes.text-structured-json.tiers]]
+min_vram_gb = 8
+model = "qwen3:8b"
+```
+
+```bash
+mlai catalog resolve --purpose text-structured-json \
+  --catalog fragment-a.toml --catalog fragment-b.toml \
+  --os linux --gpu-vendor nvidia \
+  --vram-gb 12 --effective-vram-gb 12 --disk-free-gb 200
+```
+
+Prints the resolved model name to stdout, or a clear error if nothing fits
+or two catalogs disagree. `mlai` does not detect hardware itself — the
+`--os`/`--gpu-vendor`/`--vram-gb`/`--effective-vram-gb`/`--disk-free-gb`
+flags are the caller's (a component's own setup script) responsibility to
+supply, the same as today.
+
 ## Credentials
 
 `mlai` does not store, manage, or ever see hosted-model API keys or other

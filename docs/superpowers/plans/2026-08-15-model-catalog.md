@@ -30,7 +30,7 @@
 **Interfaces:**
 - Produces: `mlai_core::catalog::{Os, GpuVendor, HardwareProfile, ModelTier, Purpose, CatalogFragment, CatalogError}`. `CatalogFragment::parse(toml_str: &str) -> Result<CatalogFragment, CatalogError>`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-core/src/catalog.rs`:
 ```rust
@@ -113,12 +113,12 @@ owner = "cinepipe-stories"
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: FAIL to compile — module `catalog` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-core/src/catalog.rs`:
 ```rust
@@ -211,12 +211,12 @@ Add to `crates/mlai-core/src/lib.rs`:
 pub mod catalog;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-core/src/catalog.rs crates/mlai-core/src/lib.rs
@@ -233,7 +233,7 @@ git commit -m "feat(mlai-core): add model catalog types and fragment parsing"
 **Interfaces:**
 - Produces: `mlai_core::catalog::{MergedCatalog, merge_fragments}`. `merge_fragments(fragments: &[CatalogFragment]) -> Result<MergedCatalog, CatalogError>`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-core/src/catalog.rs`'s test module:
 ```rust
@@ -324,7 +324,7 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: FAIL to compile — `merge_fragments`, `MergedCatalog`, and the test helper's use of `profile()` (added in Task 3) don't exist yet. `profile()` is referenced here but implemented in Task 3 — for this step, temporarily stub it inline at the bottom of this task's test additions:
@@ -341,7 +341,7 @@ Expected: FAIL to compile — `merge_fragments`, `MergedCatalog`, and the test h
 ```
 (This stub is genuinely needed by Task 2's tests and is not redundant with Task 3 — Task 3 doesn't redefine it, it reuses this one.)
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add to `crates/mlai-core/src/catalog.rs`, after `CatalogFragment`'s `impl` block:
 ```rust
@@ -395,12 +395,12 @@ pub fn merge_fragments(fragments: &[CatalogFragment]) -> Result<MergedCatalog, C
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: still FAILS to compile at this point — `MergedCatalog::resolve` (used by every test in this task) doesn't exist yet. That's expected; Task 3 implements it. Do not skip ahead — commit only after Task 3 makes the full suite pass, per Step 5 below being deferred.
 
-- [ ] **Step 5: Commit (after Task 3, not before)**
+- [x] **Step 5: Commit (after Task 3, not before)**
 
 This task's commit is folded into Task 3's — `resolve` and `merge_fragments` are tested together and neither compiles alone. Proceed directly to Task 3.
 
@@ -414,7 +414,7 @@ This task's commit is folded into Task 3's — `resolve` and `merge_fragments` a
 **Interfaces:**
 - Produces: `MergedCatalog::resolve(&self, purpose: &str, profile: &HardwareProfile, reserve_vram_gb: f64) -> Option<&str>`.
 
-- [ ] **Step 1: Add the `profile()` test helper and resolution-specific tests**
+- [x] **Step 1: Add the `profile()` test helper and resolution-specific tests**
 
 Add to `crates/mlai-core/src/catalog.rs`'s test module (the `profile()` helper from Task 2's Step 2 should already be present — if it isn't yet, add it now exactly as shown there):
 ```rust
@@ -484,12 +484,12 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module (the `profile()` helper f
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: FAIL to compile — `MergedCatalog::resolve` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add to `crates/mlai-core/src/catalog.rs`, after `merge_fragments`:
 ```rust
@@ -525,12 +525,12 @@ impl MergedCatalog {
 }
 ```
 
-- [ ] **Step 4: Run the full catalog test suite**
+- [x] **Step 4: Run the full catalog test suite**
 
 Run: `cd crates/mlai-core && cargo test catalog::`
 Expected: PASS — all tests from Tasks 1–3 (14 tests).
 
-- [ ] **Step 5: Run the full mlai-core suite and commit**
+- [x] **Step 5: Run the full mlai-core suite and commit**
 
 Run: `cd crates/mlai-core && cargo test`
 Expected: PASS — all modules green.
@@ -554,7 +554,7 @@ git commit -m "feat(mlai-core): add model catalog merge and tier resolution"
 - Consumes: `mlai_core::catalog::{CatalogFragment, merge_fragments, HardwareProfile, Os, GpuVendor}` (Tasks 1–3).
 - Produces: `mlai catalog resolve --purpose <p> --catalog <path>... --os <os> --gpu-vendor <vendor> --vram-gb <f> --effective-vram-gb <f> --disk-free-gb <f> [--reserve-vram-gb <f>]` — prints the resolved model name to stdout, or exits non-zero with an actionable message if nothing resolves.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 `crates/mlai-cli/tests/catalog.rs`:
 ```rust
@@ -699,12 +699,12 @@ model = "qwen3:32b"
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --workspace`
 Expected: FAIL to compile — `crates/mlai-cli/src/commands/catalog.rs` doesn't exist yet, and the CLI has no `catalog` subcommand.
 
-- [ ] **Step 3: Write `commands/catalog.rs`**
+- [x] **Step 3: Write `commands/catalog.rs`**
 
 `crates/mlai-cli/src/commands/catalog.rs`:
 ```rust
@@ -758,7 +758,7 @@ pub mod repair;
 pub mod uninstall;
 ```
 
-- [ ] **Step 4: Wire the CLI subcommand**
+- [x] **Step 4: Wire the CLI subcommand**
 
 In `crates/mlai-cli/src/main.rs`, add `Os`/`GpuVendor` to the `use` list (`use mlai_core::manifest::...` stays separate; add a new import), and extend the `Commands` enum:
 ```rust
@@ -859,12 +859,12 @@ Update the `match cli.command` block:
         },
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — including the 3 new `mlai-cli` catalog integration tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -880,7 +880,7 @@ git commit -m "feat(mlai-cli): add catalog resolve command"
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -891,7 +891,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add a new section, after "Backend options protocol":
 ```markdown
@@ -933,14 +933,14 @@ flags are the caller's (a component's own setup script) responsibility to
 supply, the same as today.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document the model catalog and catalog resolve command"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run: `cargo test --workspace`
 Expected: PASS on the local platform; CI verifies all three once pushed.
