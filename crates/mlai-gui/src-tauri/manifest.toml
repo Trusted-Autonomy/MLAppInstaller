@@ -1,0 +1,7 @@
+manifest_version = "1.0.0"
+
+[[components]]
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
+ref = "main"
+default = true
