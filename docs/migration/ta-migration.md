@@ -84,3 +84,48 @@ requires_os = ["windows"]
 3. **Now**: convert `v0.18.3`'s hand-written platform/model logic into a `ta`-owned model catalog fragment; swap `ta vtt install`'s detection branches for `mlai catalog resolve` calls.
 4. **Later, once `mlai-package` exists**: author a distribution profile for signed, native installers, replacing the packaging half of `v0.18.2` for real.
 5. **Update `PLAN.md`**: close `v0.18.2` as superseded; if the team wants a paper trail, `v0.18.2`'s items map to steps 1, 2, and 4 above, not a from-scratch build.
+
+## Where this slots into `PLAN.md`
+
+This is a **replacement of `v0.18.2`'s content, not a new phase** — same version slot, same `Depends on` line, so nothing else in `PLAN.md` that references `v0.18.2` by number needs renumbering. `v0.18.3` (voice-to-text) already only depends on `v0.18.1`, not `v0.18.2`, so retargeting `v0.18.2` doesn't block it — but phased-plan step 3 above (the model-catalog fragment) should land *before* `v0.18.3`'s own implementation work reaches its platform-detection item, since that item is exactly what step 3 replaces. An agent picking this up should sequence `v0.18.2` before finishing `v0.18.3`, even though `PLAN.md`'s formal `Depends on` field doesn't enforce that ordering today.
+
+Proposed replacement text for the `v0.18.2` entry in `PLAN.md` (drop this in verbatim, adjust item numbering to match whatever's already checked off if work has started):
+
+```markdown
+### v0.18.2 — Adopt MLAppInstaller as the Cross-Platform Installer
+<!-- status: pending -->
+
+**Goal**: Adopt MLAppInstaller (github.com/michaelhunley/MLAppInstaller — an external
+shared foundation, not a TA-internal crate) as TA's install/packaging engine instead of
+building a TA-only `ta-package`. Meridian and future plugin apps get cross-platform
+installer support from the same shared engine CinePipeAi also adopted, rather than TA
+reimplementing packaging logic independently. See MLAppInstaller's
+`docs/migration/ta-migration.md` for the full mapping this phase is based on.
+
+**Depends on**: v0.17.4 (release management stable), v0.18.1 (`ta-agent` standalone)
+
+**Items**:
+
+1. [ ] **Author `manifest.toml`**: wrap `install.sh`/`install_local.sh` as `mlai-core`
+   setup commands — TA's own scripts keep running unchanged, `mlai` only orchestrates.
+2. [ ] **Windows setup path**: add `[components.setup.windows]`, closing the gap
+   `install.sh` currently punts to WSL2/winget.
+3. [ ] **Model catalog for v0.18.3**: convert the voice-transcription plugin's
+   hand-written platform/model logic into a `trusted-autonomy`-owned catalog fragment;
+   swap `ta vtt install`'s detection branches for `mlai catalog resolve` calls. Land this
+   before v0.18.3's platform-detection item is implemented, not after.
+4. [ ] **Distribution profile**: once `mlai-package` exists upstream (check
+   MLAppInstaller's own `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`
+   for status), author a distribution profile for signed Windows/Mac/Linux installers.
+   This replaces the original scope's `ta-package` extraction, GH Actions template, and
+   code-signing stubs items.
+5. [ ] **Meridian CI integration**: point Meridian's release workflow at the adopted
+   MLAppInstaller distribution profile instead of a TA-internal packaging template.
+6. [ ] **Tests**: real end-to-end `mlai install`/`mlai repair` against TA's own manifest,
+   on all three platforms (MLAppInstaller's own CI already proves the underlying engine
+   works cross-platform — this item verifies TA's specific manifest/setup scripts do too).
+7. [ ] **USAGE.md**: how Meridian and future plugin apps adopt MLAppInstaller as their
+   installer.
+
+#### Version: `0.18.2-alpha`
+```
