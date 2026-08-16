@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use mlai_core::catalog::{GpuVendor, Os};
 use std::path::PathBuf;
 
 mod commands;
@@ -54,6 +55,71 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Resolve the best-fit model for a purpose against a hardware profile
+    Catalog {
+        #[command(subcommand)]
+        action: CatalogAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum CatalogAction {
+    Resolve {
+        #[arg(long)]
+        purpose: String,
+        #[arg(long = "catalog")]
+        catalog_paths: Vec<PathBuf>,
+        #[arg(long, value_enum)]
+        os: CliOs,
+        #[arg(long = "gpu-vendor", value_enum)]
+        gpu_vendor: CliGpuVendor,
+        #[arg(long)]
+        vram_gb: f64,
+        #[arg(long)]
+        effective_vram_gb: f64,
+        #[arg(long)]
+        disk_free_gb: f64,
+        #[arg(long, default_value_t = 0.0)]
+        reserve_vram_gb: f64,
+    },
+}
+
+#[derive(Clone, clap::ValueEnum)]
+enum CliOs {
+    Windows,
+    Macos,
+    Linux,
+}
+
+impl From<CliOs> for Os {
+    fn from(v: CliOs) -> Os {
+        match v {
+            CliOs::Windows => Os::Windows,
+            CliOs::Macos => Os::Macos,
+            CliOs::Linux => Os::Linux,
+        }
+    }
+}
+
+#[derive(Clone, clap::ValueEnum)]
+enum CliGpuVendor {
+    Nvidia,
+    Amd,
+    Apple,
+    Intel,
+    None,
+}
+
+impl From<CliGpuVendor> for GpuVendor {
+    fn from(v: CliGpuVendor) -> GpuVendor {
+        match v {
+            CliGpuVendor::Nvidia => GpuVendor::Nvidia,
+            CliGpuVendor::Amd => GpuVendor::Amd,
+            CliGpuVendor::Apple => GpuVendor::Apple,
+            CliGpuVendor::Intel => GpuVendor::Intel,
+            CliGpuVendor::None => GpuVendor::None,
+        }
+    }
 }
 
 fn parse_set_option(s: &str) -> Result<(String, String), String> {
@@ -84,5 +150,26 @@ fn main() -> anyhow::Result<()> {
             yes,
             dry_run,
         } => commands::uninstall::run(&manifest, &install_root, yes, dry_run),
+        Commands::Catalog { action } => match action {
+            CatalogAction::Resolve {
+                purpose,
+                catalog_paths,
+                os,
+                gpu_vendor,
+                vram_gb,
+                effective_vram_gb,
+                disk_free_gb,
+                reserve_vram_gb,
+            } => commands::catalog::resolve(
+                &purpose,
+                &catalog_paths,
+                os.into(),
+                gpu_vendor.into(),
+                vram_gb,
+                effective_vram_gb,
+                disk_free_gb,
+                reserve_vram_gb,
+            ),
+        },
     }
 }

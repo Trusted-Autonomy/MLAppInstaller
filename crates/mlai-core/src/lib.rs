@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod catalog;
 pub mod fetch;
 pub mod health;
 pub mod manifest;
