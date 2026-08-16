@@ -167,6 +167,23 @@ or two catalogs disagree. `mlai` does not detect hardware itself — the
 flags are the caller's (a component's own setup script) responsibility to
 supply, the same as today.
 
+## GUI wizard
+
+A Tauri-based GUI wraps `mlai-core` for users who'd rather not use the CLI:
+
+```bash
+cd crates/mlai-gui && npm install && npm run tauri dev
+```
+
+It reads a `manifest.toml` bundled next to the app (or, in dev mode, at the
+repository root) and supports the same three operations as the CLI --
+Install, Force Reinstall, Repair -- with live per-component progress in the
+log view. It has no test harness of its own (matching the prior art it was
+ported from); verify changes by running it and exercising the flow
+manually. Building a distributable app from this GUI is what the
+distribution-packaging framework (`docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`)
+is for -- not covered here.
+
 ## Credentials
 
 `mlai` does not store, manage, or ever see hosted-model API keys or other

@@ -4,6 +4,7 @@ pub mod fetch;
 pub mod health;
 pub mod manifest;
 pub mod options_protocol;
+pub mod paths;
 pub mod pipeline;
 pub mod removals;
 pub mod state;

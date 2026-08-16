@@ -6,7 +6,33 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main></main>
+    <main>
+      <h1>MLAppInstaller</h1>
+      <p id="manifest-version" class="muted"></p>
+
+      <label for="install-root">Install location</label>
+      <input id="install-root" type="text" placeholder="Default: platform-specific" />
+      <span id="install-status" class="muted"></span>
+
+      <label for="mode-select">Mode</label>
+      <select id="mode-select">
+        <option value="install">Install</option>
+        <option value="force">Force Reinstall</option>
+        <option value="repair">Repair</option>
+      </select>
+
+      <h2>Components</h2>
+      <div id="components-list"></div>
+
+      <div id="model-options-section" class="hidden">
+        <h2>Options</h2>
+        <div id="model-options-list"></div>
+      </div>
+
+      <button id="install-button">Install</button>
+      <p id="status" class="status"></p>
+      <pre id="log-view"></pre>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
