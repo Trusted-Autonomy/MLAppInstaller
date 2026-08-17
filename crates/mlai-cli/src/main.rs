@@ -60,6 +60,11 @@ enum Commands {
         #[command(subcommand)]
         action: CatalogAction,
     },
+    /// Build a native installer from a distribution profile
+    Package {
+        #[command(subcommand)]
+        action: PackageAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -81,6 +86,20 @@ enum CatalogAction {
         disk_free_gb: f64,
         #[arg(long, default_value_t = 0.0)]
         reserve_vram_gb: f64,
+    },
+}
+
+#[derive(Subcommand)]
+enum PackageAction {
+    Build {
+        #[arg(long)]
+        profile: PathBuf,
+        #[arg(long, default_value_t = 0)]
+        target_index: usize,
+        #[arg(long)]
+        binary: String,
+        #[arg(long)]
+        out_dir: PathBuf,
     },
 }
 
@@ -170,6 +189,14 @@ fn main() -> anyhow::Result<()> {
                 disk_free_gb,
                 reserve_vram_gb,
             ),
+        },
+        Commands::Package { action } => match action {
+            PackageAction::Build {
+                profile,
+                target_index,
+                binary,
+                out_dir,
+            } => commands::package::build(&profile, target_index, &binary, &out_dir),
         },
     }
 }
