@@ -3072,6 +3072,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "mlai-core",
+ "mlai-package",
  "mockito",
  "predicates",
  "tempfile",
@@ -3115,6 +3116,16 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tempfile",
+]
+
+[[package]]
+name = "mlai-package"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "toml 0.8.23",
 ]
 
 [[package]]

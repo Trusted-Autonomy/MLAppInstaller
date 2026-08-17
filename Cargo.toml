@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/mlai-core", "crates/mlai-cli", "crates/mlai-credentials", "crates/mlai-gui/src-tauri"]
+members = ["crates/mlai-core", "crates/mlai-cli", "crates/mlai-credentials", "crates/mlai-gui/src-tauri", "crates/mlai-package"]
 
 [workspace.package]
 version = "0.1.0"
