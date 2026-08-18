@@ -65,6 +65,11 @@ enum Commands {
         #[command(subcommand)]
         action: PackageAction,
     },
+    /// Guided wizard that writes a distribution profile for mlai package build
+    Init {
+        #[arg(long, default_value = "distribution-profile.toml")]
+        output: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -228,5 +233,6 @@ fn main() -> anyhow::Result<()> {
                 )
             }
         },
+        Commands::Init { output } => commands::init::run(&output),
     }
 }

@@ -37,7 +37,7 @@
 - Consumes: `mlai_package::profile::{DistributionProfile, Distribution, Target, Platform, PackageFormat, DeployConfig}` (from `mlai-package-foundation`).
 - Produces: `mlai init [--output <path>]` — reads prompts from stdin, writes a `DistributionProfile` TOML file. Internal: `run_wizard(reader: &mut impl BufRead, writer: &mut impl Write) -> Result<DistributionProfile, InitError>` (the testable core, decoupled from real stdin/stdout).
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 `crates/mlai-cli/tests/init.rs`:
 ```rust
@@ -126,12 +126,12 @@ fn writes_a_minimal_valid_profile_from_all_blank_optional_answers() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --workspace`
 Expected: FAIL — `mlai` has no `init` subcommand yet, and `crates/mlai-cli/tests/init.rs` won't compile against a nonexistent CLI surface (the binary itself still builds; `assert_cmd` will just fail the test at runtime with a "no such subcommand" error initially — but add the CLI wiring in Step 4 before expecting a real pass, per the plan's Step order).
 
-- [ ] **Step 3: Write `commands/init.rs`**
+- [x] **Step 3: Write `commands/init.rs`**
 
 `crates/mlai-cli/src/commands/init.rs`:
 ```rust
@@ -270,7 +270,7 @@ pub mod repair;
 pub mod uninstall;
 ```
 
-- [ ] **Step 4: Wire the CLI subcommand**
+- [x] **Step 4: Wire the CLI subcommand**
 
 In `crates/mlai-cli/src/main.rs`, add to the `Commands` enum:
 ```rust
@@ -294,12 +294,12 @@ Add to `[dependencies]` (this plan's own addition, not present before):
 toml = "0.8"
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cargo test --workspace`
 Expected: PASS — both `mlai-cli/tests/init.rs` tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-cli
@@ -315,7 +315,7 @@ git commit -m "feat(mlai-cli): add init guided wizard"
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -326,7 +326,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add after "Publishing a distribution":
 ```markdown
@@ -349,14 +349,14 @@ one, run it again with a different platform answer and merge the
 `[[targets]]` entries by hand, or edit the TOML directly.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document mlai init"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run: `cargo test --workspace`
 Expected: PASS on the local platform; CI verifies all three once pushed.
