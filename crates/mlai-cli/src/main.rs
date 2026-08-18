@@ -65,6 +65,11 @@ enum Commands {
         #[command(subcommand)]
         action: PackageAction,
     },
+    /// Guided wizard that writes a distribution profile for mlai package build
+    Init {
+        #[arg(long, default_value = "distribution-profile.toml")]
+        output: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -100,22 +105,6 @@ enum PackageAction {
         binary: String,
         #[arg(long)]
         out_dir: PathBuf,
-    },
-    Deploy {
-        #[arg(long)]
-        profile: PathBuf,
-        #[arg(long)]
-        tag: String,
-        #[arg(long = "file")]
-        files: Vec<PathBuf>,
-        #[arg(long)]
-        draft: bool,
-        #[arg(long)]
-        prerelease: bool,
-        #[arg(long, default_value = "")]
-        notes: String,
-        #[arg(long)]
-        title: Option<String>,
     },
 }
 
@@ -213,20 +202,7 @@ fn main() -> anyhow::Result<()> {
                 binary,
                 out_dir,
             } => commands::package::build(&profile, target_index, &binary, &out_dir),
-            PackageAction::Deploy {
-                profile,
-                tag,
-                files,
-                draft,
-                prerelease,
-                notes,
-                title,
-            } => {
-                let title = title.unwrap_or_else(|| tag.clone());
-                commands::package_deploy::run(
-                    &profile, &tag, files, draft, prerelease, &notes, &title,
-                )
-            }
         },
+        Commands::Init { output } => commands::init::run(&output),
     }
 }
