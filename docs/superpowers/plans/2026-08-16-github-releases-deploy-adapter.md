@@ -1,6 +1,6 @@
 # GitHub Releases Deploy Adapter Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** The one real, working deploy destination for v1: publish built packages to GitHub Releases via the `gh` CLI, matching how both TA and CinePipe already publish today.
 
@@ -31,7 +31,7 @@
 **Interfaces:**
 - Produces: `mlai_package::deploy::{deploy_command, DeployOptions}`. `DeployOptions { repo: String, tag: String, files: Vec<PathBuf>, draft: bool, prerelease: bool, notes: String, title: String }`. `deploy_command(opts: &DeployOptions) -> Command`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `crates/mlai-package/src/deploy.rs`:
 ```rust
@@ -97,12 +97,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd crates/mlai-package && cargo test deploy::`
 Expected: FAIL to compile — module `deploy` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Prepend to the top of `crates/mlai-package/src/deploy.rs`:
 ```rust
@@ -150,12 +150,12 @@ Add to `crates/mlai-package/src/lib.rs`:
 pub mod deploy;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd crates/mlai-package && cargo test deploy::`
 Expected: PASS — 3 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-package/src/deploy.rs crates/mlai-package/src/lib.rs
@@ -175,7 +175,7 @@ git commit -m "feat(mlai-package): add GitHub Releases deploy command constructi
 **Interfaces:**
 - Produces: `mlai_package::deploy::{deploy, DeployError}`. `deploy(opts: &DeployOptions) -> Result<(), DeployError>`. CLI: `mlai package deploy --profile <path> --tag <tag> --file <path> [--file <path> ...] [--draft] [--prerelease] --notes <text> --title <text>`.
 
-- [ ] **Step 1: Add the execution wrapper**
+- [x] **Step 1: Add the execution wrapper**
 
 Add to `crates/mlai-package/src/deploy.rs`, after `deploy_command`:
 ```rust
@@ -199,7 +199,7 @@ pub fn deploy(opts: &DeployOptions) -> Result<(), DeployError> {
 }
 ```
 
-- [ ] **Step 2: Write `commands/package_deploy.rs`**
+- [x] **Step 2: Write `commands/package_deploy.rs`**
 
 `crates/mlai-cli/src/commands/package_deploy.rs`:
 ```rust
@@ -265,7 +265,7 @@ pub mod repair;
 pub mod uninstall;
 ```
 
-- [ ] **Step 3: Wire the CLI subcommand**
+- [x] **Step 3: Wire the CLI subcommand**
 
 In `crates/mlai-cli/src/main.rs`, add a `Deploy` variant to the `PackageAction` enum (alongside `Build`):
 ```rust
@@ -294,12 +294,12 @@ Update the `PackageAction` match arm to add:
             }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo build --workspace && cargo test --workspace`
 Expected: PASS — this task adds no new automated tests of its own beyond Task 1's; confirm the whole workspace still builds and every existing test still passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add crates/mlai-package/src/deploy.rs crates/mlai-cli
@@ -315,7 +315,7 @@ git commit -m "feat(mlai-cli): add package deploy command"
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Run the full constitution-required check suite locally**
+- [x] **Step 1: Run the full constitution-required check suite locally**
 
 Run:
 ```bash
@@ -326,7 +326,7 @@ cargo fmt --all -- --check
 ```
 Expected: all four PASS.
 
-- [ ] **Step 2: Update `docs/USAGE.md`**
+- [x] **Step 2: Update `docs/USAGE.md`**
 
 Add after "Building a distribution":
 ```markdown
@@ -346,14 +346,14 @@ implemented; other deploy destinations are future, separately-designed
 work.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/USAGE.md
 git commit -m "docs: document package deploy"
 ```
 
-- [ ] **Step 4: Final full-workspace verification**
+- [x] **Step 4: Final full-workspace verification**
 
 Run: `cargo test --workspace`
 Expected: PASS on the local platform; CI verifies all three once pushed.

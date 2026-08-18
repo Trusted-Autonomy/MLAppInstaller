@@ -195,6 +195,21 @@ credential (OS keychain, 1Password, Vault, an env var, ...), and the
 component's own setup command is entirely responsible for resolving and
 using it. This design is on hold pending further exploration.
 
+## Publishing a distribution
+
+```bash
+mlai package deploy --profile distribution-profile.toml --tag v1.2.3 \
+  --file dist/my-app.dmg --file dist/my-app.msi \
+  --notes "Release notes" --title "v1.2.3"
+```
+
+Requires the profile's `[deploy]` section (`adapter = "github-releases"`,
+`repo = "owner/name"`) and a `gh` CLI already authenticated in the
+environment: `mlai` never manages GitHub credentials itself. `--draft`/
+`--prerelease` are passed through unchanged. Only `github-releases` is
+implemented; other deploy destinations are future, separately-designed
+work.
+
 ## Not yet implemented
 
 Remote-version detection (upgrade because something changed upstream, not

@@ -101,6 +101,22 @@ enum PackageAction {
         #[arg(long)]
         out_dir: PathBuf,
     },
+    Deploy {
+        #[arg(long)]
+        profile: PathBuf,
+        #[arg(long)]
+        tag: String,
+        #[arg(long = "file")]
+        files: Vec<PathBuf>,
+        #[arg(long)]
+        draft: bool,
+        #[arg(long)]
+        prerelease: bool,
+        #[arg(long, default_value = "")]
+        notes: String,
+        #[arg(long)]
+        title: Option<String>,
+    },
 }
 
 #[derive(Clone, clap::ValueEnum)]
@@ -197,6 +213,20 @@ fn main() -> anyhow::Result<()> {
                 binary,
                 out_dir,
             } => commands::package::build(&profile, target_index, &binary, &out_dir),
+            PackageAction::Deploy {
+                profile,
+                tag,
+                files,
+                draft,
+                prerelease,
+                notes,
+                title,
+            } => {
+                let title = title.unwrap_or_else(|| tag.clone());
+                commands::package_deploy::run(
+                    &profile, &tag, files, draft, prerelease, &notes, &title,
+                )
+            }
         },
     }
 }
