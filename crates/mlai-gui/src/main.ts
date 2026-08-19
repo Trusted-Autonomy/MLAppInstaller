@@ -1,11 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
 
 interface Component {
   name: string;
   source_url: string;
   component_ref: string;
   default: boolean;
+  binds_to_project_type?: string | null;
+}
+
+interface ComponentResult {
+  name: string;
+  outcome: string;
+  message: string | null;
 }
 
 interface Manifest {
@@ -50,6 +58,8 @@ interface InstalledStatus {
 let logView: HTMLElement | null;
 let installButton: HTMLButtonElement | null;
 let statusEl: HTMLElement | null;
+let currentManifest: Manifest | null = null;
+let selectedProjectPath: string | null = null;
 
 const selectedOptionValues: Record<string, Record<string, string>> = {};
 
@@ -112,6 +122,7 @@ async function loadDefaultInstallRoot() {
 async function loadComponents() {
   try {
     const manifest = await invoke<Manifest>("list_components");
+    currentManifest = manifest;
     renderComponents(manifest);
     await refreshModelOptions();
   } catch (e) {
@@ -193,12 +204,35 @@ async function refreshModelOptions() {
   section.classList.toggle("hidden", !anyShown);
 }
 
+function populateProjectTypeDropdown(installedStatus: InstalledStatus) {
+  const section = document.querySelector<HTMLElement>("#add-project-section");
+  const select = document.querySelector<HTMLSelectElement>("#project-type-select");
+  if (!section || !select || !currentManifest) return;
+
+  const installedNames = new Set(Object.keys(installedStatus.components ?? {}));
+  const types = new Set(
+    currentManifest.components
+      .filter((c) => installedNames.has(c.name) && c.binds_to_project_type)
+      .map((c) => c.binds_to_project_type as string),
+  );
+
+  select.innerHTML = "";
+  for (const t of types) {
+    const option = document.createElement("option");
+    option.value = t;
+    option.textContent = t;
+    select.appendChild(option);
+  }
+  section.classList.toggle("hidden", types.size === 0);
+}
+
 async function refreshInstallStatus() {
   const statusSpan = document.querySelector<HTMLElement>("#install-status");
   try {
     const status = await invoke<InstalledStatus>("read_install_status", {
       installRoot: currentInstallRoot() || null,
     });
+    populateProjectTypeDropdown(status);
     if (statusSpan) {
       const entries = Object.entries(status.components ?? {});
       statusSpan.textContent =
@@ -265,6 +299,35 @@ async function runInstall() {
   }
 }
 
+async function pickProjectFile() {
+  const path = await open({ multiple: false, directory: false });
+  if (typeof path === "string") {
+    selectedProjectPath = path;
+    const span = document.querySelector<HTMLSpanElement>("#selected-project-path");
+    if (span) span.textContent = path;
+    const bindButton = document.querySelector<HTMLButtonElement>("#bind-project-button");
+    if (bindButton) bindButton.disabled = false;
+  }
+}
+
+async function bindProject() {
+  if (!selectedProjectPath) return;
+  const projectType =
+    document.querySelector<HTMLSelectElement>("#project-type-select")?.value ?? "";
+  const resultDiv = document.querySelector<HTMLDivElement>("#bind-project-result");
+  if (!resultDiv) return;
+  try {
+    const results = await invoke<ComponentResult[]>("bind_project", {
+      installRoot: currentInstallRoot() || null,
+      projectType,
+      projectPath: selectedProjectPath,
+    });
+    resultDiv.textContent = `Bound ${results.length} component(s) to ${projectType}.`;
+  } catch (err) {
+    resultDiv.textContent = `Failed to bind project: ${err}`;
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   logView = document.querySelector("#log-view");
   installButton = document.querySelector("#install-button");
@@ -283,6 +346,13 @@ window.addEventListener("DOMContentLoaded", () => {
     debounceTimer = setTimeout(refreshInstallStatus, 400);
   });
 
+  document
+    .querySelector<HTMLButtonElement>("#pick-project-file-button")
+    ?.addEventListener("click", pickProjectFile);
+  document
+    .querySelector<HTMLButtonElement>("#bind-project-button")
+    ?.addEventListener("click", bindProject);
+
   listen<string>("install-log", (event) => appendLog(event.payload));
   listen<InstallDone>("install-done", (event) => {
     if (statusEl) {
@@ -290,6 +360,7 @@ window.addEventListener("DOMContentLoaded", () => {
       statusEl.className = "status " + (event.payload.success ? "status-ok" : "status-fail");
     }
     if (installButton) installButton.disabled = false;
+    if (event.payload.success) refreshInstallStatus();
   });
 
   loadDefaultInstallRoot().then(() => loadComponents().then(refreshInstallStatus));
