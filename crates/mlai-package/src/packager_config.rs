@@ -38,6 +38,8 @@ struct PackagerConfig {
     macos: Option<PackagerMacosConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     windows: Option<PackagerWindowsConfig>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    resources: Vec<String>,
 }
 
 /// Maps this crate's `PackageFormat` to the exact format string
@@ -82,6 +84,7 @@ pub fn build_packager_config(
             .map(|certificate_thumbprint| PackagerWindowsConfig {
                 certificate_thumbprint,
             }),
+        resources: vec![profile.distribution.manifest.clone()],
     };
     serde_json::to_string(&config).expect("PackagerConfig always serializes")
 }
@@ -180,5 +183,15 @@ signing_identity = "keychain:Developer ID Application: Example, Inc."
                 "format {format:?}"
             );
         }
+    }
+
+    #[test]
+    fn includes_the_distribution_manifest_as_a_resource() {
+        let profile = sample_profile();
+        let target = &profile.targets[0];
+        let json = build_packager_config(&profile, target, "bin/hello-app");
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(value["resources"], serde_json::json!(["manifest.toml"]));
     }
 }
