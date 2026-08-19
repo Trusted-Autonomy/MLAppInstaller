@@ -29,6 +29,16 @@
         <div id="model-options-list"></div>
       </div>
 
+      <div id="add-project-section" class="hidden">
+        <h2>Bind a Project</h2>
+        <label for="project-type-select">Engine</label>
+        <select id="project-type-select"></select>
+        <button id="pick-project-file-button" type="button">Choose Project File...</button>
+        <span id="selected-project-path"></span>
+        <button id="bind-project-button" type="button" disabled>Bind Project</button>
+        <div id="bind-project-result"></div>
+      </div>
+
       <button id="install-button">Install</button>
       <p id="status" class="status"></p>
       <pre id="log-view"></pre>
