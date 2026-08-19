@@ -86,4 +86,4 @@ Ported from `wizard/src/main.ts`'s existing "Add Project" panel:
 
 ## Relationship to the cinepipe-installer migration
 
-This closes the one real gap `docs/migration/cinepipe-installer-migration.md` names under "GUI wizard: `add_project`/project-binding was dropped, not ported." Once built, that document's caveat is resolved — `mlai-gui` becomes a complete replacement for the branch's wizard, not a subset of it.
+This closes the project-binding gap named in `docs/migration/adopter-migration-guide.md`'s "What usually requires real changes" section. Once built, `mlai-gui` becomes a complete replacement for a bespoke wizard's own project-binding feature, not a subset of it.
