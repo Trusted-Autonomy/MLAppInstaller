@@ -19,7 +19,7 @@ TA's `PLAN.md` `v0.18.2` item was written to build exactly what now exists here.
 
 ## What migrates directly
 
-**Manifest.** TA ships essentially one component (`ta` + `ta-daemon` + channel plugins as one release artifact, not cinepipe's multi-component model). A minimal `manifest.toml`:
+**Manifest.** TA ships essentially one component (`ta` + `ta-daemon` + channel plugins as one release artifact, not a multi-component model). A minimal `manifest.toml`:
 
 ```toml
 manifest_version = "1.0.0"
@@ -100,7 +100,7 @@ Proposed replacement text for the `v0.18.2` entry in `PLAN.md` (drop this in ver
 **Goal**: Adopt MLAppInstaller (github.com/michaelhunley/MLAppInstaller — an external
 shared foundation, not a TA-internal crate) as TA's install/packaging engine instead of
 building a TA-only `ta-package`. Meridian and future plugin apps get cross-platform
-installer support from the same shared engine CinePipeAi also adopted, rather than TA
+installer support from the same shared engine other adopting projects use, rather than TA
 reimplementing packaging logic independently. See MLAppInstaller's
 `docs/migration/ta-migration.md` for the full mapping this phase is based on.
 
