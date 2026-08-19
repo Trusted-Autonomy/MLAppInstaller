@@ -1,6 +1,7 @@
 /target
 .DS_Store
 *.log
+node_modules/
 .ta/
 
 # Trusted Autonomy — local runtime state (do not commit)
