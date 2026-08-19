@@ -214,6 +214,19 @@ manually. Building a distributable app from this GUI is what the
 distribution-packaging framework (`docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`)
 is for -- not covered here.
 
+### Theme (`[gui]` table)
+
+```toml
+[gui]
+theme = "dark"
+```
+
+- `theme` — `"system"` (default), `"light"`, or `"dark"`. `"system"` follows
+  the OS light/dark preference live, with no restart needed to pick up a
+  change. `"light"`/`"dark"` pin the GUI to that appearance regardless of
+  the OS setting. This is adopter-configured in the distributed
+  `manifest.toml` -- there is no in-app toggle for the end user.
+
 ## Credentials
 
 `mlai` does not store, manage, or ever see hosted-model API keys or other
