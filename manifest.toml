@@ -1,16 +1,7 @@
 manifest_version = "1.0.0"
 
 [[components]]
-name = "ue5-cine-pipeline"
-source_url = "http://127.0.0.1:8933/bundle.zip"
+name = "hello-component"
+source_url = "https://example.com/hello-component.zip"
 ref = "main"
 default = true
-binds_to_project_type = "UE5"
-
-[components.setup.posix]
-command = "sh"
-args = ["setup.sh", "-Project", "{project}"]
-
-[components.health.posix]
-type = "file_exists"
-path = "marker.txt"
