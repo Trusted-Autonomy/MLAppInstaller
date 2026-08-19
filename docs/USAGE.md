@@ -240,6 +240,14 @@ built once can be reused across adopters: it reads the packaged
 `app_name`, with no separate `mlai-gui` checkout or rebuild needed per
 adopter.
 
+The distribution profile's `manifest` field (set via `mlai init`'s
+"Manifest path" prompt, or hand-edited in the profile TOML) must point to a
+file named exactly `manifest.toml` -- not a different filename or a nested
+path. `mlai-gui` looks up the packaged resource by that literal name at
+runtime; a profile that names its manifest something else will still
+package successfully, but the resulting GUI app will fail to find its
+manifest when launched.
+
 ## Credentials
 
 `mlai` does not store, manage, or ever see hosted-model API keys or other
