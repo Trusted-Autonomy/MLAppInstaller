@@ -132,7 +132,11 @@ async function loadComponents() {
       document.documentElement.dataset.theme = manifest.gui.theme;
     }
     if (manifest.gui.app_name) {
-      await getCurrentWindow().setTitle(manifest.gui.app_name);
+      try {
+        await getCurrentWindow().setTitle(manifest.gui.app_name);
+      } catch (e) {
+        console.error(`Could not set window title to "${manifest.gui.app_name}":`, e);
+      }
     }
     renderComponents(manifest);
     await refreshModelOptions();
