@@ -1,11 +1,11 @@
 # Project Binding (`bind-project`): Design
 
-**Status**: Approved 2026-08-18 (design confirmed directly by user; grounded against the real mechanism in `cinepipe-installer`'s `feat/unified-rust-installer` branch, read directly — `wizard/src-tauri/src/{manifest,components,lib}.rs`, `wizard/src/main.ts`).
+**Status**: Approved 2026-08-18 (design confirmed directly by user; grounded against the real mechanism in a prior-art project's unmerged branch, read directly — `wizard/src-tauri/src/{manifest,components,lib}.rs`, `wizard/src/main.ts`).
 **Extends**: `docs/superpowers/specs/2026-08-14-foundation-design.md` (manifest/pipeline) and `docs/superpowers/specs/2026-08-15-gui-wizard-design.md` (GUI).
 
 ## Problem
 
-`docs/migration/cinepipe-installer-migration.md` names one real, not-yet-generalized gap blocking a clean cutover of `cinepipe-installer` onto MLAppInstaller: **project binding**. In the branch, a component can tag itself `BindsToProjectType = "UE5"`; once that component is installed, the GUI's "Add Project" action lets the end user pick a real `.uproject` file, and the wizard re-runs that component's setup command with the real project path substituted in for a `{Project}` placeholder. This is used in production today — `cinepipe-installer` is the installer currently shipping to customers — so this is not a hypothetical feature, it's a hard requirement for the cutover.
+`docs/migration/adopter-migration-guide.md` names one real, not-yet-generalized gap blocking a clean cutover for a prior-art adopter: **project binding**. In the source branch, a component can tag itself `BindsToProjectType = "UE5"`; once that component is installed, the GUI's "Add Project" action lets the end user pick a real `.uproject` file, and the wizard re-runs that component's setup command with the real project path substituted in for a `{Project}` placeholder. This is used in production today — that installer is currently shipping to customers — so this is not a hypothetical feature, it's a hard requirement for the cutover.
 
 ## Scope
 
@@ -34,11 +34,11 @@ pub struct Component {
 TOML:
 ```toml
 [[components]]
-name = "ue5-cine-pipeline"
+name = "ue5-plugin"
 binds_to_project_type = "UE5"
 
 [components.setup.windows]
-command = "install\\Install-CinePipe-UE5.ps1"
+command = "install\\Install-UE5-Plugin.ps1"
 args = ["-Project", "{project}", "-NoPause"]
 ```
 
@@ -84,6 +84,6 @@ Ported from `wizard/src/main.ts`'s existing "Add Project" panel:
 3. **Force-reinstall reuses the existing `install_component` force path** rather than a new "rebind" codepath — same mechanism `repair`/`force: bool` already exercises, no new pipeline primitive beyond the filter-and-substitute logic itself.
 4. **CLI-first, GUI-second within this one plan** — both are in scope (the GUI is the actual production requirement), but the CLI subcommand is the interface `mlai-gui`'s Tauri command wraps, so it's built first within the same implementation plan, not a separate one.
 
-## Relationship to the cinepipe-installer migration
+## Relationship to the adopter migration guide
 
 This closes the project-binding gap named in `docs/migration/adopter-migration-guide.md`'s "What usually requires real changes" section. Once built, `mlai-gui` becomes a complete replacement for a bespoke wizard's own project-binding feature, not a subset of it.

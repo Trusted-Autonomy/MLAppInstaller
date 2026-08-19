@@ -66,7 +66,7 @@ mod tests {
 
     fn sample_options() -> DeployOptions {
         DeployOptions {
-            repo: "CinePipeAi/cinepipe-director".to_string(),
+            repo: "example-org/example-app".to_string(),
             tag: "v1.2.3".to_string(),
             files: vec![PathBuf::from("dist/app.dmg"), PathBuf::from("dist/app.msi")],
             draft: false,
@@ -92,7 +92,7 @@ mod tests {
         assert!(args.contains(&"dist/app.dmg".to_string()));
         assert!(args.contains(&"dist/app.msi".to_string()));
         assert!(args.contains(&"--repo".to_string()));
-        assert!(args.contains(&"CinePipeAi/cinepipe-director".to_string()));
+        assert!(args.contains(&"example-org/example-app".to_string()));
     }
 
     #[test]

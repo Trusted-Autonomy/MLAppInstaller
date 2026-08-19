@@ -67,7 +67,7 @@ impl Fetcher for HttpFetcher {
 
 /// Unpacks `zip_path` into `dest_dir`, renaming the archive's single
 /// top-level folder to `component_name` so components land as predictable
-/// sibling directories (mirrors cinepipe-installer's `Expand-CpBundle`).
+/// sibling directories.
 pub fn unpack_zip(
     zip_path: &Path,
     dest_dir: &Path,

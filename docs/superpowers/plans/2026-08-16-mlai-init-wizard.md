@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `mlai init` — a guided CLI wizard for the *adopter* (a TA or CinePipe engineer configuring a distribution, not an end customer) that prompts through the choices a `DistributionProfile` needs and writes the file, with no deep packaging/Rust/TOML knowledge required.
+**Goal:** `mlai init` — a guided CLI wizard for the *adopter* (an engineer at an adopting project configuring a distribution, not an end customer) that prompts through the choices a `DistributionProfile` needs and writes the file, with no deep packaging/Rust/TOML knowledge required.
 
 **Prerequisite:** `docs/superpowers/plans/2026-08-16-mlai-package-foundation.md` must already be merged — this plan writes `mlai_package::profile::DistributionProfile` values and needs those types to exist. Do not start this plan if `crates/mlai-package/src/profile.rs` doesn't exist yet. This plan has no dependency on `docs/superpowers/plans/2026-08-16-github-releases-deploy-adapter.md` and can be built in parallel with it — both depend only on `mlai-package-foundation`, not on each other.
 

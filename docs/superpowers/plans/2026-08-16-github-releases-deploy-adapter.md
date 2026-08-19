@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**Goal:** The one real, working deploy destination for v1: publish built packages to GitHub Releases via the `gh` CLI, matching how both TA and CinePipe already publish today.
+**Goal:** The one real, working deploy destination for v1: publish built packages to GitHub Releases via the `gh` CLI, matching how TA and other adopting projects already publish today.
 
 **Prerequisite:** `docs/superpowers/plans/2026-08-16-mlai-package-foundation.md` must already be merged — this plan adds a module to the `mlai-package` crate that plan creates and consumes its `DistributionProfile`/`DeployConfig` types. Do not start this plan if `crates/mlai-package/src/profile.rs` doesn't exist yet.
 
@@ -42,7 +42,7 @@ mod tests {
 
     fn sample_options() -> DeployOptions {
         DeployOptions {
-            repo: "CinePipeAi/cinepipe-director".to_string(),
+            repo: "example-org/example-app".to_string(),
             tag: "v1.2.3".to_string(),
             files: vec![PathBuf::from("dist/app.dmg"), PathBuf::from("dist/app.msi")],
             draft: false,
@@ -65,7 +65,7 @@ mod tests {
         assert!(args.contains(&"dist/app.dmg".to_string()));
         assert!(args.contains(&"dist/app.msi".to_string()));
         assert!(args.contains(&"--repo".to_string()));
-        assert!(args.contains(&"CinePipeAi/cinepipe-director".to_string()));
+        assert!(args.contains(&"example-org/example-app".to_string()));
     }
 
     #[test]

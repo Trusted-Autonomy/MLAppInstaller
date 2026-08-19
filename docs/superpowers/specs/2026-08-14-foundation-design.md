@@ -3,7 +3,7 @@
 **Status**: Approved 2026-08-14 (architecture confirmed by user; ready for implementation planning)
 **Supersedes**: TA `PLAN.md` roadmap item `v0.18.2 — Extract ta-package + Cross-Platform Installer` (see "Relationship to TA's roadmap" below)
 
-**Amendment, 2026-08-15**: the `mlai-credentials` crate described below (an installer-owned encrypted vault, ported from TA's `ta-credentials`) was built, then reverted — an installer that stores secret values is solving the wrong problem; see `docs/CONSTITUTION.md` §2.1 and `docs/superpowers/specs/2026-08-15-credential-source-glue-design.md` for the corrected, on-hold direction (the installer passes through a credential *reference* via the existing backend-options protocol; it never touches the value). References to `mlai-credentials` below are historical context for that decision, not current architecture. The same day, a mature, tested Rust installer implementation was found on cinepipe-installer's `feat/unified-rust-installer` branch — its proven algorithms (guarded removals, repair, per-platform setup/health) are being ported into `mlai-core` rather than re-derived from scratch; see that plan's own notes for what's ported vs. generalized.
+**Amendment, 2026-08-15**: the `mlai-credentials` crate described below (an installer-owned encrypted vault, ported from TA's `ta-credentials`) was built, then reverted — an installer that stores secret values is solving the wrong problem; see `docs/CONSTITUTION.md` §2.1 and `docs/superpowers/specs/2026-08-15-credential-source-glue-design.md` for the corrected, on-hold direction (the installer passes through a credential *reference* via the existing backend-options protocol; it never touches the value). References to `mlai-credentials` below are historical context for that decision, not current architecture. The same day, a mature, tested Rust installer implementation was found in a prior-art project's unmerged branch — its proven algorithms (guarded removals, repair, per-platform setup/health) are being ported into `mlai-core` rather than re-derived from scratch; see that plan's own notes for what's ported vs. generalized.
 
 ## Problem
 
@@ -13,7 +13,7 @@ independently:
 - **TA's own installer** (`install.sh`, `install_local.sh`) — single-binary fetch/build,
   no component graph, but has a proven credential vault (`ta-credentials`: age
   encryption, OS-keychain-first, chmod-0600 fallback).
-- **cinepipe-installer** — a manifest-driven, multi-component pipeline
+- **A partner project's installer** — a manifest-driven, multi-component pipeline
   (download → unpack → setup → health-check → backup), idempotent/resumable install
   state, versioned "removals" for upgrade cleanup, and a genuinely reusable **Setup
   Options Protocol** (`--describe-options` / `--set key=value`) for local-vs-hosted
@@ -22,8 +22,8 @@ independently:
 
 Both are duplicating effort that a third consumer (`agentic-pm`, cloud-deploy use case)
 is about to duplicate a third time. MLAppInstaller extracts the shared foundation once,
-generalized beyond CinePipe-specific concepts, so TA, CinePipe, and `agentic-pm` become
-consumers instead of parallel implementations.
+generalized beyond any one product's specific concepts, so TA and every adopting
+project become consumers instead of parallel implementations.
 
 ## Decisions
 
@@ -35,12 +35,12 @@ during design review:
    MLAppInstaller becomes that extraction. TA's `PLAN.md` gets a follow-up edit (outside
    this repo) pointing `v0.18.2` at adopting MLAppInstaller instead of building a
    parallel `ta-package`.
-2. **Single Rust codebase, cross-compiled** — not cinepipe's PowerShell/bash twin
-   pattern. Eliminates the exact script-drift problem cinepipe has today. Matches TA's
+2. **Single Rust codebase, cross-compiled** — not the PowerShell/bash twin
+   pattern seen in prior art. Eliminates that exact script-drift problem. Matches TA's
    existing stack, enabling direct reuse of `ta-credentials`.
 3. **CLI/engine first; GUI is a fast-follow.** v1 ships `mlai-core` + `mlai-cli` as a
-   solid, testable foundation. The Tauri wizard (cinepipe's prototype, not yet its
-   default customer path) gets rebuilt as a thin shell over the CLI in a later phase.
+   solid, testable foundation. A Tauri wizard gets built as a thin shell over the CLI
+   in a later phase.
 4. **Cloud install, v1 scope = config generation, not live provisioning.** `mlai cloud
    generate` produces a deploy bundle (Dockerfile, deploy manifest, secrets template).
    Actually deploying to a specific provider (AWS, Render.com, ...) is delegated to
@@ -55,11 +55,11 @@ Full rationale for each is in `docs/CONSTITUTION.md` §1 and §4.
 Four crates:
 
 - **`mlai-core`** — manifest schema (components, refs, setup commands, health checks,
-  removals — generalized from `manifest.psd1`/`.json`), the
+  removals — generalized from a legacy `.psd1`/`.json` prior-art format), the
   download → unpack → setup → health → backup pipeline, idempotent `installed.json`
-  state tracking, and the generalized backend-option protocol (cinepipe's
-  `--describe-options`/`--set key=value`, generalized beyond CinePipe's "purposes"
-  vocabulary to any local-vs-hosted choice a component wants to expose).
+  state tracking, and the generalized backend-option protocol (a prior-art project's own
+  `--describe-options`/`--set key=value`, generalized beyond that one product's
+  "purposes" vocabulary to any local-vs-hosted choice a component wants to expose).
 - **`mlai-credentials`** — `ta-credentials`'s vault (age + OS-keychain-first +
   chmod-0600 fallback), generalized so the keyring service/namespace is a caller
   parameter instead of hardcoded to `trusted-autonomy-vault`.
@@ -68,14 +68,14 @@ Four crates:
   "take this config and deploy it to provider X").
 - **`mlai-cli`** (`mlai` binary) — v1's only surface: `mlai install|repair|uninstall|update`
   for local components, `mlai cloud generate` for the config-only cloud path. This is
-  what TA's own installer becomes, and what CinePipe/`agentic-pm` eventually vendor or
-  shell out to.
+  what TA's own installer becomes, and what other adopting projects/`agentic-pm`
+  eventually vendor or shell out to.
 
 ```mermaid
 graph TD
     subgraph Consumers
         TA[TA installer]
-        CP[CinePipe installer]
+        Adopter[Adopting project's installer]
         PM[agentic-pm installer]
     end
     subgraph MLAppInstaller
@@ -90,7 +90,7 @@ graph TD
     end
 
     TA -- manifest.toml --> Core
-    CP -- manifest.toml --> Core
+    Adopter -- manifest.toml --> Core
     PM -- manifest.toml --> Core
     Core --> CLI
     Cred --> CLI
@@ -101,7 +101,7 @@ graph TD
 
 ## Install pipeline (per component)
 
-Resumable state machine, lifted from cinepipe's proven design (constitution §3.1–3.3):
+Resumable state machine, lifted from a prior-art project's proven design (constitution §3.1–3.3):
 
 ```mermaid
 stateDiagram-v2
@@ -123,8 +123,9 @@ guarded so a removal path must resolve inside the install root.
 
 ## Local vs. cloud backend selection
 
-Generalizes cinepipe's Setup Options Protocol + model-catalog pattern so any component's
-manifest can declare local-vs-hosted choices, not just CinePipe's model "purposes":
+Generalizes a prior-art project's Setup Options Protocol + model-catalog pattern so any
+component's manifest can declare local-vs-hosted choices, not just one product's model
+"purposes":
 
 ```mermaid
 flowchart LR
@@ -140,8 +141,8 @@ flowchart LR
 A component that doesn't implement the protocol behaves exactly as it does today — the
 CLI falls back to running setup with no extra options. Probing is gated behind an
 explicit manifest flag (`supports_options_protocol: true`), never a blind probe, matching
-cinepipe's own safety rationale (calling `--describe-options` on a script that doesn't
-recognize the flag could silently trigger real side effects).
+a prior-art project's own safety rationale (calling `--describe-options` on a script that
+doesn't recognize the flag could silently trigger real side effects).
 
 ## Cloud config generation
 
@@ -154,16 +155,16 @@ flowchart LR
     D -->|no| F[User/CI deploys<br/>generated config manually]
 ```
 
-Provider adapters are discovered the same way cinepipe discovers setup scripts:
-`.mlai/providers/`, `$PATH` prefix `mlai-provider-`. An adapter is a separate executable;
-core has zero knowledge of AWS, Render, or any other provider's API.
+Provider adapters are discovered the same way a prior-art project discovers setup
+scripts: `.mlai/providers/`, `$PATH` prefix `mlai-provider-`. An adapter is a separate
+executable; core has zero knowledge of AWS, Render, or any other provider's API.
 
 ## What's explicitly deferred
 
-- **TA and CinePipe retrofitting onto this base** — separate follow-up tasks. Both
-  should eventually reduce to a `manifest.toml` plus adapters, but that migration isn't
-  part of this repo's implementation plan.
-- **GUI wizard** — fast-follow phase; reuses cinepipe's Tauri prototype and lessons.
+- **TA and other adopting projects' retrofitting onto this base** — separate follow-up
+  tasks. All should eventually reduce to a `manifest.toml` plus adapters, but that
+  migration isn't part of this repo's implementation plan.
+- **GUI wizard** — fast-follow phase.
 - **Live cloud provisioning** — v1 only generates config. Provider adapters that call a
   provider's API are a later, community-extensible layer, not built as part of this
   plan.
@@ -183,7 +184,7 @@ follow-up task, not here.
 
 ## Testing strategy
 
-Per `docs/CONSTITUTION.md` §5 and cinepipe's own precedent (`test/selftest.ps1`):
+Per `docs/CONSTITUTION.md` §5 and prior-art precedent (a `test/selftest.ps1`-style suite):
 archive/download round-trip against a small public repo, manifest parse/validate,
 `installed.json` state round-trip, health-check evaluation, guarded-removal path
 validation, and backup/restore — without invoking any real component's heavy setup.
@@ -194,8 +195,8 @@ under `tempfile::tempdir()`.
 
 - **Manifest format: TOML.** Matches Rust-ecosystem convention and `ta-credentials`'s
   own config style. This is a new project, not a migration of an existing manifest, so
-  there's no reuse benefit to cinepipe's PowerShell-native `.psd1` shape.
-- **Backend-option protocol flags are verbatim cinepipe compatible**: `mlai-core` calls
-  `--describe-options` / `--set key=value`, the exact flag names cinepipe already uses.
-  Any component that already implements cinepipe's protocol needs zero changes to work
-  under `mlai-core`.
+  there's no reuse benefit to a PowerShell-native `.psd1` shape seen in prior art.
+- **Backend-option protocol flags are verbatim compatible with a prior-art project's
+  own protocol**: `mlai-core` calls `--describe-options` / `--set key=value`, the exact
+  flag names that project already uses. Any component that already implements that
+  protocol needs zero changes to work under `mlai-core`.

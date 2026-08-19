@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add secure credential storage (`mlai-credentials`, generalized from TA's `ta-credentials`) and the backend-options protocol (`mlai-core::options_protocol`, generalized from cinepipe-installer's Setup Options Protocol) so a component can declare local-vs-hosted choices, and `mlai install --set key=value` / `mlai credential set` can act on them.
+**Goal:** Add secure credential storage (`mlai-credentials`, generalized from TA's `ta-credentials`) and the backend-options protocol (`mlai-core::options_protocol`, generalized from a prior-art installer's Setup Options Protocol) so a component can declare local-vs-hosted choices, and `mlai install --set key=value` / `mlai credential set` can act on them.
 
-**Architecture:** A new `mlai-credentials` crate (age encryption, OS-keychain-first custody, chmod-0600 fallback — ported from `ta-credentials/src/encryption.rs`, generalized so the keyring namespace is a caller parameter) backing a flat encrypted key-value `Vault`. A new `mlai-core::options_protocol` module probes a component's setup command for `--describe-options` (cinepipe's exact protocol shape) with a timeout and forward-compatible unknown-type handling. The existing pipeline (`crates/mlai-core/src/pipeline.rs`) gains a `set_options` field threaded through to `--set key=value` args on the setup invocation. `mlai-cli` gains `install --set key=value` (gated on the manifest declaring `supports_options_protocol = true`) and a new `credential set <key>` subcommand.
+**Architecture:** A new `mlai-credentials` crate (age encryption, OS-keychain-first custody, chmod-0600 fallback — ported from `ta-credentials/src/encryption.rs`, generalized so the keyring namespace is a caller parameter) backing a flat encrypted key-value `Vault`. A new `mlai-core::options_protocol` module probes a component's setup command for `--describe-options` (matching a prior-art installer's exact protocol shape) with a timeout and forward-compatible unknown-type handling. The existing pipeline (`crates/mlai-core/src/pipeline.rs`) gains a `set_options` field threaded through to `--set key=value` args on the setup invocation. `mlai-cli` gains `install --set key=value` (gated on the manifest declaring `supports_options_protocol = true`) and a new `credential set <key>` subcommand.
 
 **Tech Stack:** Adds `age = "0.12"` and `keyring = "4"` (exact versions TA already uses in production) to a new `mlai-credentials` crate. No new dependencies in `mlai-core` or `mlai-cli` beyond what Plan A already added.
 
@@ -13,7 +13,7 @@
 - Secrets are never written to disk in plaintext — always through `mlai-credentials`'s age-encrypted vault (`docs/CONSTITUTION.md` §2.1).
 - When OS keychain custody is unavailable and the vault falls back to a chmod-0600 file, that must be surfaced to the user, not silently logged (`docs/CONSTITUTION.md` §2.2) — this plan uses `eprintln!` for that disclosure; a full `tracing` setup is out of scope.
 - A component that doesn't implement the options protocol behaves exactly as it does today — probing or `--set` are only ever attempted when the manifest explicitly declares `supports_options_protocol = true` (`docs/superpowers/specs/2026-08-14-foundation-design.md`, "Local vs. cloud backend selection").
-- `mlai-core`'s options-protocol flag names are verbatim cinepipe-compatible: `--describe-options`, `--set key=value` (spec's "Additional decisions").
+- `mlai-core`'s options-protocol flag names are verbatim compatible with a prior-art installer's own protocol: `--describe-options`, `--set key=value` (spec's "Additional decisions").
 - Unknown `OptionSpec` `type` values are skipped, not treated as an error (forward-compatible, per `docs/SETUP-OPTIONS-PROTOCOL.md`'s own protocol spec).
 - Before every commit: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` all pass (`docs/CONSTITUTION.md` §5).
 - All filesystem-touching tests use `tempfile::tempdir()`. All tests that force key custody use `use_keychain: false` to force the deterministic file-fallback path — OS keychain interaction is not reliably testable in CI (matches `ta-credentials`'s own test suite, which never exercises the real keychain either).
@@ -774,7 +774,7 @@ pub enum OptionsError {
 
 /// Probes a component's setup command for the backend-options protocol.
 ///
-/// Per the protocol (and cinepipe-installer's own safety rationale), a
+/// Per the protocol's own safety rationale, a
 /// caller MUST NOT call this unless the component's manifest entry
 /// explicitly declares `supports_options_protocol = true` — an unpatched
 /// setup script could silently run its real, side-effecting setup if
@@ -1323,7 +1323,7 @@ mlai install --manifest manifest.toml --install-root ~/my-app --set model=qwen3:
 ```
 
 `--set key=value` is repeatable and passed straight through to the
-component's setup command, verbatim compatible with cinepipe-installer's
+component's setup command, verbatim compatible with a prior-art installer's
 existing `--set key=value` convention (see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`).
 
@@ -1370,6 +1370,6 @@ Expected: PASS. Total test count across the workspace: `mlai-core` (manifest 6, 
 
 ## Self-Review Notes
 
-- **Spec coverage**: credential vault (age + keychain + fallback, generalized keyring namespace) and the backend-options protocol (verbatim cinepipe-compatible `--describe-options`/`--set key=value`, forward-compatible unknown-type handling, manifest-flag-gated probing) are both covered per `docs/superpowers/specs/2026-08-14-foundation-design.md`'s "Local vs. cloud backend selection" section. Automatic interactive prompting during `mlai install` (the full "ask → store → pass" UX) is explicitly out of scope for this plan, not a gap — see "Out of scope" above.
+- **Spec coverage**: credential vault (age + keychain + fallback, generalized keyring namespace) and the backend-options protocol (verbatim compatible with a prior-art installer's own protocol `--describe-options`/`--set key=value`, forward-compatible unknown-type handling, manifest-flag-gated probing) are both covered per `docs/superpowers/specs/2026-08-14-foundation-design.md`'s "Local vs. cloud backend selection" section. Automatic interactive prompting during `mlai install` (the full "ask → store → pass" UX) is explicitly out of scope for this plan, not a gap — see "Out of scope" above.
 - **Placeholder scan**: no TBD/TODO markers; every step has complete, runnable code, including the fixes to Plan A's existing `PipelineOptions`/`Component` construction sites broken by this plan's new required fields.
 - **Type consistency**: `VaultConfig`, `Vault`, `KeyCustody`, `OptionsDescriptor`, `OptionSpec`, `describe_options`, and `PipelineOptions.set_options` are each defined once and consumed with matching names/signatures in every later task (Task 5's CLI code imports Task 2's and Task 4's exact public signatures).

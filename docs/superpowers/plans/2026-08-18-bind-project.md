@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Port `cinepipe-installer`'s `BindsToProjectType`/`add_project` mechanism into MLAppInstaller — a manifest field, a pipeline function, a CLI subcommand, and a GUI panel — so an installed component can be bound to a real target-project file (e.g. a UE5 `.uproject`) after install.
+**Goal:** Port a prior-art installer's `BindsToProjectType`/`add_project` mechanism into MLAppInstaller — a manifest field, a pipeline function, a CLI subcommand, and a GUI panel — so an installed component can be bound to a real target-project file (e.g. a UE5 `.uproject`) after install.
 
 **Architecture:** Add `binds_to_project_type: Option<String>` to `Component` in `mlai-core::manifest`. Add `bind_project()` to `mlai-core::pipeline`, matching the exact per-component `PipelineOptions` construction pattern already used by `commands::install::run`/`commands::repair::run` (not a shared pre-built `PipelineOptions`, since `version` must be each component's own `component_ref`). `bind_project` filters `manifest.components` by `binds_to_project_type` and by already-installed state (checked via `InstalledState::load`), substitutes a `{project}` placeholder into the matched components' setup args, and force-reinstalls each via the existing `install_component`. Wire a `mlai bind-project` CLI subcommand, then a Tauri command + GUI panel in `mlai-gui` that calls the same pipeline function.
 
@@ -168,7 +168,7 @@ Add to `crates/mlai-core/src/pipeline.rs`, after `install_component`:
 /// Finds every already-installed component matching `project_type`,
 /// substitutes `project_path` for a `{project}` placeholder in its setup
 /// command args, and force-reinstalls it -- the same semantics as
-/// cinepipe-installer's original `add_project`: untagged components and
+/// the same semantics as the source installer's original `add_project`: untagged components and
 /// tagged-but-not-yet-installed components are left completely untouched.
 pub fn bind_project(
     manifest: &crate::manifest::Manifest,

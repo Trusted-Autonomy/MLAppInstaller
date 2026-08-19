@@ -786,7 +786,7 @@ impl Fetcher for HttpFetcher {
 
 /// Unpacks `zip_path` into `dest_dir`, renaming the archive's single
 /// top-level folder to `component_name` so components land as predictable
-/// sibling directories (mirrors cinepipe-installer's `Expand-CpBundle`).
+/// sibling directories.
 pub fn unpack_zip(zip_path: &Path, dest_dir: &Path, component_name: &str) -> Result<PathBuf, FetchError> {
     let file = fs::File::open(zip_path).map_err(|source| FetchError::Io { path: zip_path.to_path_buf(), source })?;
     let mut archive = zip::ZipArchive::new(file)?;
