@@ -80,6 +80,36 @@ A genuinely healthy component is left completely untouched (no download, no
 setup re-run). A broken one goes through the same backup-then-reinstall
 sequence `install` uses.
 
+## Binding a project (`mlai bind-project`)
+
+`mlai bind-project` notifies every installed component matching a project type
+that a real project file now needs their services. A component declares its
+project type affinity via `binds_to_project_type` in the manifest:
+
+```bash
+mlai bind-project --manifest manifest.toml --install-root ~/my-app \
+  --type UE5 --path /path/to/MyGame.uproject
+```
+
+Only components with `binds_to_project_type = "UE5"` (matching the `--type`
+argument) receive the binding callback. Their setup command is re-run with
+`{project}` replaced by the `--path` value:
+
+```toml
+[[components]]
+name = "ue5-cine-pipeline"
+source_url = "https://example.com/ue5-cine-pipeline.zip"
+ref = "main"
+binds_to_project_type = "UE5"
+
+[components.setup.posix]
+command = "sh"
+args = ["setup.sh", "-Project", "{project}"]
+```
+
+The command fails clearly if no installed component declares the project type,
+or if any component's binding step fails.
+
 ## Forcing a reinstall
 
 ```bash

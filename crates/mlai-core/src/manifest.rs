@@ -46,6 +46,8 @@ pub struct Component {
     pub health: PlatformHealth,
     #[serde(default)]
     pub supports_options_protocol: PlatformFlag,
+    #[serde(default)]
+    pub binds_to_project_type: Option<String>,
 }
 
 impl Component {
@@ -258,5 +260,33 @@ paths = ["hello-component/legacy_tool.py"]
             manifest.removals[0].paths,
             vec!["hello-component/legacy_tool.py"]
         );
+    }
+
+    #[test]
+    fn component_parses_binds_to_project_type_when_present() {
+        let toml = r#"
+        manifest_version = "1.0.0"
+
+        [[components]]
+        name = "ue5-cine-pipeline"
+        source_url = "https://example.com/ue5-cine-pipeline.zip"
+        ref = "main"
+        binds_to_project_type = "UE5"
+
+        [components.setup.posix]
+        command = "./install.sh"
+        args = ["-Project", "{project}"]
+    "#;
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(
+            manifest.components[0].binds_to_project_type.as_deref(),
+            Some("UE5")
+        );
+    }
+
+    #[test]
+    fn component_binds_to_project_type_defaults_to_none_when_absent() {
+        let manifest = Manifest::parse(SAMPLE).unwrap();
+        assert_eq!(manifest.components[0].binds_to_project_type, None);
     }
 }

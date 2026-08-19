@@ -100,6 +100,66 @@ fn describe_component_options(
     Ok(describe_options_for(&manifest, &component, &component_dir))
 }
 
+fn bind_project_for(
+    manifest: &Manifest,
+    install_root: &Path,
+    project_type: &str,
+    project_path: &str,
+) -> Result<Vec<ComponentResult>, String> {
+    let fetcher = HttpFetcher {
+        token: std::env::var("MLAI_TOKEN").ok(),
+    };
+    let raw_results = mlai_core::pipeline::bind_project(
+        manifest,
+        install_root,
+        &fetcher,
+        project_type,
+        Path::new(project_path),
+    );
+    if raw_results.is_empty() {
+        return Err(format!(
+            "no installed component declares binds_to_project_type = \"{project_type}\""
+        ));
+    }
+    Ok(raw_results
+        .into_iter()
+        .map(|(name, result)| match result {
+            Ok(mlai_core::state::ComponentState::Healthy) => ComponentResult {
+                name,
+                outcome: "healthy".to_string(),
+                message: None,
+            },
+            Ok(other) => ComponentResult {
+                name,
+                outcome: format!("{other:?}"),
+                message: None,
+            },
+            Err(e) => ComponentResult {
+                name,
+                outcome: "failed".to_string(),
+                message: Some(e.to_string()),
+            },
+        })
+        .collect())
+}
+
+#[tauri::command]
+fn bind_project(
+    app: AppHandle,
+    install_root: Option<String>,
+    project_type: String,
+    project_path: String,
+) -> Result<Vec<ComponentResult>, String> {
+    let manifest_path = find_resource(&app, "manifest.toml")
+        .ok_or_else(|| "manifest.toml not found".to_string())?;
+    let manifest = read_manifest_at(&manifest_path)?;
+    let root = install_root
+        .filter(|r| !r.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(mlai_core::paths::default_install_root);
+    bind_project_for(&manifest, &root, &project_type, &project_path)
+}
+
 use mlai_core::fetch::HttpFetcher;
 use mlai_core::pipeline::{install_component, repair_component, PipelineOptions};
 use mlai_core::state::ComponentState;
@@ -257,12 +317,14 @@ fn run_install(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             list_components,
             default_install_root,
             read_install_status,
             describe_component_options,
-            run_install
+            run_install,
+            bind_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -324,6 +386,7 @@ default = true
                 setup: PlatformSetup::default(),
                 health: PlatformHealth::default(),
                 supports_options_protocol: PlatformFlag::default(),
+                binds_to_project_type: None,
             }],
             removals: vec![],
         };
@@ -360,6 +423,29 @@ default = true
         let done = summarize_results(&results);
         assert!(done.success);
         assert_eq!(done.message, "Install finished successfully.");
+    }
+
+    #[test]
+    fn bind_project_for_returns_an_error_string_when_nothing_matches() {
+        use mlai_core::manifest::{Component, PlatformFlag, PlatformHealth, PlatformSetup};
+
+        let dir = tempdir().unwrap();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![Component {
+                name: "hello-component".into(),
+                source_url: "https://example.com/hello-component.zip".into(),
+                component_ref: "main".into(),
+                default: true,
+                setup: PlatformSetup::default(),
+                health: PlatformHealth::default(),
+                supports_options_protocol: PlatformFlag::default(),
+                binds_to_project_type: None,
+            }],
+            removals: vec![],
+        };
+        let result = bind_project_for(&manifest, dir.path(), "UE5", "/fake/MyGame.uproject");
+        assert!(result.is_err());
     }
 
     #[test]

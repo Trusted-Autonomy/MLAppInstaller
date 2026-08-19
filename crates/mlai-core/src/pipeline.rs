@@ -76,6 +76,54 @@ pub fn repair_component(
     run_install_sequence(component, &mut state, opts).map(|final_state| (final_state, true))
 }
 
+/// Finds every already-installed component matching `project_type`,
+/// substitutes `project_path` for a `{project}` placeholder in its setup
+/// command args, and force-reinstalls it -- the same semantics as
+/// cinepipe-installer's original `add_project`: untagged components and
+/// tagged-but-not-yet-installed components are left completely untouched.
+pub fn bind_project(
+    manifest: &crate::manifest::Manifest,
+    install_root: &Path,
+    fetcher: &dyn crate::fetch::Fetcher,
+    project_type: &str,
+    project_path: &Path,
+) -> Vec<(String, Result<ComponentState, PipelineError>)> {
+    let installed = InstalledState::load(install_root).unwrap_or_default();
+    let project_str = project_path.to_string_lossy().to_string();
+
+    manifest
+        .components
+        .iter()
+        .filter(|c| c.binds_to_project_type.as_deref() == Some(project_type))
+        .filter(|c| installed.components.contains_key(&c.name))
+        .map(|component| {
+            let mut bound = component.clone();
+            let setup = if cfg!(target_os = "windows") {
+                bound.setup.windows.as_mut()
+            } else {
+                bound.setup.posix.as_mut()
+            };
+            if let Some(setup) = setup {
+                for arg in &mut setup.args {
+                    if arg == "{project}" {
+                        *arg = project_str.clone();
+                    }
+                }
+            }
+            let opts = PipelineOptions {
+                install_root: install_root.to_path_buf(),
+                fetcher,
+                version: component.component_ref.clone(),
+                backup_keep: 3,
+                set_options: Vec::new(),
+                force: true,
+            };
+            let result = install_component(&bound, manifest, &opts);
+            (component.name.clone(), result)
+        })
+        .collect()
+}
+
 fn apply_removals_and_persist_manifest_version(
     manifest: &crate::manifest::Manifest,
     opts: &PipelineOptions,
@@ -230,6 +278,19 @@ mod tests {
         zip.finish().unwrap();
     }
 
+    fn build_fixture_zip_with_project_placeholder(path: &Path) {
+        let file = fs::File::create(path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        zip.add_directory("ue5-cine-pipeline-main/", options)
+            .unwrap();
+        zip.start_file("ue5-cine-pipeline-main/setup.sh", options)
+            .unwrap();
+        zip.write_all(b"#!/bin/sh\necho \"$@\" > argv.txt\ntouch marker.txt\n")
+            .unwrap();
+        zip.finish().unwrap();
+    }
+
     fn sample_component() -> Component {
         Component {
             name: "hello-component".into(),
@@ -250,6 +311,7 @@ mod tests {
                 }),
             },
             supports_options_protocol: PlatformFlag::default(),
+            binds_to_project_type: None,
         }
     }
 
@@ -637,5 +699,122 @@ mod tests {
             .join("hello-component")
             .join("marker.txt")
             .exists());
+    }
+
+    #[test]
+    fn bind_project_ignores_untagged_and_uninstalled_components() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let mut untagged = sample_component();
+        untagged.name = "untagged".into();
+
+        let mut tagged_not_installed = sample_component();
+        tagged_not_installed.name = "tagged-not-installed".into();
+        tagged_not_installed.binds_to_project_type = Some("UE5".into());
+
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![untagged.clone(), tagged_not_installed],
+            removals: vec![],
+        };
+
+        // Install only the untagged component, so it's recorded in installed.json
+        // -- tagged_not_installed is declared in the manifest but never installed.
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&untagged, &manifest, &opts).unwrap();
+
+        let results = bind_project(
+            &manifest,
+            root.path(),
+            &fetcher,
+            "UE5",
+            Path::new("/fake/MyGame.uproject"),
+        );
+
+        assert!(
+            results.is_empty(),
+            "untagged component and a tagged-but-uninstalled component must both be skipped"
+        );
+    }
+
+    #[test]
+    fn bind_project_substitutes_the_real_path_and_force_reinstalls_a_matching_installed_component()
+    {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_with_project_placeholder(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let ue5 = Component {
+            name: "ue5-cine-pipeline".into(),
+            source_url: "https://example.com/ue5-cine-pipeline.zip".into(),
+            component_ref: "main".into(),
+            default: true,
+            setup: PlatformSetup {
+                windows: None,
+                posix: Some(SetupCommand {
+                    command: "sh".into(),
+                    args: vec!["setup.sh".into(), "-Project".into(), "{project}".into()],
+                }),
+            },
+            health: PlatformHealth {
+                windows: None,
+                posix: Some(HealthCheck::FileExists {
+                    path: "marker.txt".into(),
+                }),
+            },
+            supports_options_protocol: PlatformFlag::default(),
+            binds_to_project_type: Some("UE5".into()),
+        };
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![ue5.clone()],
+            removals: vec![],
+        };
+
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&ue5, &manifest, &opts).unwrap();
+
+        let results = bind_project(
+            &manifest,
+            root.path(),
+            &fetcher,
+            "UE5",
+            Path::new("/fake/MyGame.uproject"),
+        );
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0, "ue5-cine-pipeline");
+        assert_eq!(results[0].1.as_ref().unwrap(), &ComponentState::Healthy);
+
+        let argv =
+            fs::read_to_string(root.path().join("ue5-cine-pipeline").join("argv.txt")).unwrap();
+        assert!(
+            argv.contains("/fake/MyGame.uproject"),
+            "the {{project}} placeholder must be substituted with the real path: {argv}"
+        );
+        assert!(
+            !argv.contains("{project}"),
+            "the literal placeholder must not survive into the real setup invocation: {argv}"
+        );
     }
 }
