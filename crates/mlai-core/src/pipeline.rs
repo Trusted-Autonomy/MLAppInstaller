@@ -246,7 +246,8 @@ fn run_setup(
 mod tests {
     use super::*;
     use crate::manifest::{
-        Component, HealthCheck, Manifest, PlatformFlag, PlatformHealth, PlatformSetup, SetupCommand,
+        Component, GuiConfig, HealthCheck, Manifest, PlatformFlag, PlatformHealth, PlatformSetup,
+        SetupCommand,
     };
     use std::fs;
     use std::io::Write;
@@ -327,6 +328,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let fetcher = FixtureFetcher { zip_path };
         let opts = PipelineOptions {
@@ -359,6 +361,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let fetcher = FixtureFetcher { zip_path };
         let opts = PipelineOptions {
@@ -391,6 +394,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let fetcher = FixtureFetcher { zip_path };
         let opts_v1 = PipelineOptions {
@@ -442,6 +446,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
 
         let fetcher = FixtureFetcher { zip_path };
@@ -477,6 +482,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -502,6 +508,7 @@ mod tests {
                 "1.1.0",
                 "hello-component/legacy_tool.py",
             )],
+            gui: GuiConfig::default(),
         };
         install_component(&component, &manifest_v2, &opts).unwrap();
 
@@ -528,6 +535,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -593,6 +601,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -642,6 +651,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -680,6 +690,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![component.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let opts = PipelineOptions {
             install_root: root.path().to_path_buf(),
@@ -720,6 +731,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![untagged.clone(), tagged_not_installed],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
 
         // Install only the untagged component, so it's recorded in installed.json
@@ -782,6 +794,7 @@ mod tests {
             manifest_version: "1.0.0".into(),
             components: vec![ue5.clone()],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
 
         let opts = PipelineOptions {

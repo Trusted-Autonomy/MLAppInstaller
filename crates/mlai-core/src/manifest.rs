@@ -6,6 +6,23 @@ pub struct Manifest {
     pub components: Vec<Component>,
     #[serde(default)]
     pub removals: Vec<RemovalEntry>,
+    #[serde(default)]
+    pub gui: GuiConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
+pub struct GuiConfig {
+    #[serde(default)]
+    pub theme: Theme,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Theme {
+    #[default]
+    System,
+    Light,
+    Dark,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
@@ -288,5 +305,35 @@ paths = ["hello-component/legacy_tool.py"]
     fn component_binds_to_project_type_defaults_to_none_when_absent() {
         let manifest = Manifest::parse(SAMPLE).unwrap();
         assert_eq!(manifest.components[0].binds_to_project_type, None);
+    }
+
+    #[test]
+    fn gui_theme_parses_when_present() {
+        let toml = r#"
+        manifest_version = "1.0.0"
+
+        [[components]]
+        name = "hello-component"
+        source_url = "https://example.com/hello-component.zip"
+        ref = "main"
+
+        [gui]
+        theme = "dark"
+    "#;
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(manifest.gui.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn gui_theme_defaults_to_system_when_gui_table_is_absent() {
+        let manifest = Manifest::parse(SAMPLE).unwrap();
+        assert_eq!(manifest.gui.theme, Theme::System);
+    }
+
+    #[test]
+    fn theme_serializes_to_snake_case_json() {
+        assert_eq!(serde_json::to_string(&Theme::System).unwrap(), "\"system\"");
+        assert_eq!(serde_json::to_string(&Theme::Light).unwrap(), "\"light\"");
+        assert_eq!(serde_json::to_string(&Theme::Dark).unwrap(), "\"dark\"");
     }
 }

@@ -19,6 +19,9 @@ interface ComponentResult {
 interface Manifest {
   manifest_version: string;
   components: Component[];
+  gui: {
+    theme: "system" | "light" | "dark";
+  };
 }
 
 interface OptionChoice {
@@ -123,6 +126,9 @@ async function loadComponents() {
   try {
     const manifest = await invoke<Manifest>("list_components");
     currentManifest = manifest;
+    if (manifest.gui.theme !== "system") {
+      document.documentElement.dataset.theme = manifest.gui.theme;
+    }
     renderComponents(manifest);
     await refreshModelOptions();
   } catch (e) {

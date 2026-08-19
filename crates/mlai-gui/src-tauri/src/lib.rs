@@ -373,7 +373,7 @@ default = true
     #[test]
     fn options_for_a_component_are_none_when_the_component_declares_no_support() {
         use mlai_core::manifest::{
-            Component, Manifest, PlatformFlag, PlatformHealth, PlatformSetup,
+            Component, GuiConfig, Manifest, PlatformFlag, PlatformHealth, PlatformSetup,
         };
 
         let manifest = Manifest {
@@ -389,6 +389,7 @@ default = true
                 binds_to_project_type: None,
             }],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
 
         let result = describe_options_for(&manifest, "hello-component", Path::new("."));
@@ -397,10 +398,13 @@ default = true
 
     #[test]
     fn options_for_an_unknown_component_name_is_none_not_an_error() {
+        use mlai_core::manifest::GuiConfig;
+
         let manifest = Manifest {
             manifest_version: "1.0.0".into(),
             components: vec![],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let result = describe_options_for(&manifest, "nonexistent", Path::new("."));
         assert_eq!(result, None);
@@ -427,7 +431,9 @@ default = true
 
     #[test]
     fn bind_project_for_returns_an_error_string_when_nothing_matches() {
-        use mlai_core::manifest::{Component, PlatformFlag, PlatformHealth, PlatformSetup};
+        use mlai_core::manifest::{
+            Component, GuiConfig, PlatformFlag, PlatformHealth, PlatformSetup,
+        };
 
         let dir = tempdir().unwrap();
         let manifest = Manifest {
@@ -443,6 +449,7 @@ default = true
                 binds_to_project_type: None,
             }],
             removals: vec![],
+            gui: GuiConfig::default(),
         };
         let result = bind_project_for(&manifest, dir.path(), "UE5", "/fake/MyGame.uproject");
         assert!(result.is_err());

@@ -1,13 +1,11 @@
 # Migrating TrustedAutonomy onto MLAppInstaller
 
 **Audience**: the TA team, deciding what to actually do with `v0.18.2` (`Extract ta-package + Cross-Platform Installer`).
-**Status**: handoff document, not an MLAppInstaller implementation plan — nothing here executes automatically. Originally written 2026-08-16, updated 2026-08-19 against MLAppInstaller's current state (`mlai-core`, `mlai-cli`, `mlai-credentials`, `mlai-gui`, `mlai-package`, model catalog — see `docs/superpowers/specs/2026-08-14-foundation-design.md` for the full architecture).
+**Status**: handoff document, not an MLAppInstaller implementation plan — nothing here executes automatically. Written 2026-08-16 against MLAppInstaller's current state (`mlai-core`, `mlai-cli`, `mlai-credentials`, `mlai-gui`, model catalog — see `docs/superpowers/specs/2026-08-14-foundation-design.md` for the full architecture).
 
 ## Bottom line
 
 TA's `PLAN.md` `v0.18.2` item was written to build exactly what now exists here. **Recommendation: close `v0.18.2` as "superseded by MLAppInstaller" and replace it with an adoption item**, not a from-scratch build. What follows is what that adoption actually involves.
-
-**2026-08-19 update:** the item this doc originally flagged as the sole reason to wait — `mlai-package` not existing yet — is resolved. `mlai-package` (native MSI/dmg/deb via `cargo-packager`, signing-as-reference), `mlai package deploy` (GitHub Releases adapter), and `mlai init` (guided distribution setup) are all built and merged. Step 4 of the phased plan below no longer needs to wait for anything upstream.
 
 ## What TA has today
 
@@ -19,7 +17,7 @@ TA's `PLAN.md` `v0.18.2` item was written to build exactly what now exists here.
 
 ## What migrates directly
 
-**Manifest.** TA ships essentially one component (`ta` + `ta-daemon` + channel plugins as one release artifact, not a multi-component model). A minimal `manifest.toml`:
+**Manifest.** TA ships essentially one component (`ta` + `ta-daemon` + channel plugins as one release artifact, not cinepipe's multi-component model). A minimal `manifest.toml`:
 
 ```toml
 manifest_version = "1.0.0"
@@ -72,7 +70,7 @@ requires_os = ["windows"]
 
 **`ta-credentials` stays exactly as-is — this is not a migration target.** It's easy to assume the wrong thing here given the history: `mlai-credentials` was originally *ported from* `ta-credentials`, then reverted from MLAppInstaller entirely (see `docs/CONSTITUTION.md` §2.1) because an install-time tool storing secrets is the wrong shape — but TA's own use case (a long-running daemon brokering scoped, revocable credentials to agent processes) is exactly what `ta-credentials` is for, and that need doesn't go away. **Nothing about adopting MLAppInstaller should touch `ta-credentials`.**
 
-**Distribution/packaging is now available.** `v0.18.2` also wanted signed, versioned installers across three platforms — that's `mlai-package` (wraps `cargo-packager`, signing-as-reference) plus `mlai package deploy` (GitHub Releases adapter), per `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`. **Both are built and merged as of 2026-08-19** — `mlai init` (guided distribution-profile authoring) is too. TA's native-installer/signing work no longer needs to wait on anything upstream.
+**Distribution/packaging is not available yet.** `v0.18.2` also wanted signed, versioned installers across three platforms — that's `mlai-package` (wraps `cargo-packager`, signing-as-reference, GitHub Releases deploy adapter) per `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`. **That crate doesn't exist yet** — only its design is approved. TA's actual native-installer/signing work should wait for it rather than duplicating effort, unless the timeline doesn't allow waiting, in which case building it is squarely in scope for whoever picks it up next (it was designed with TA's and CinePipe's shared needs in mind, not CinePipe alone).
 
 ## What doesn't migrate
 
@@ -84,7 +82,7 @@ requires_os = ["windows"]
 1. **Now**: author `manifest.toml` wrapping TA's existing `install.sh`/`install_local.sh` logic as setup commands (near-zero risk — `mlai` orchestrates, doesn't replace, TA's own scripts keep running exactly as they do today).
 2. **Now**: add Windows setup support via `[components.setup.windows]`, closing the gap `install.sh` currently punts to WSL2/winget.
 3. **Now**: convert `v0.18.3`'s hand-written platform/model logic into a `ta`-owned model catalog fragment; swap `ta vtt install`'s detection branches for `mlai catalog resolve` calls.
-4. **Now**: author a distribution profile for signed, native installers via `mlai init`, then `mlai package build`/`mlai package deploy` — replacing the packaging half of `v0.18.2` for real. No longer blocked on upstream work.
+4. **Later, once `mlai-package` exists**: author a distribution profile for signed, native installers, replacing the packaging half of `v0.18.2` for real.
 5. **Update `PLAN.md`**: close `v0.18.2` as superseded; if the team wants a paper trail, `v0.18.2`'s items map to steps 1, 2, and 4 above, not a from-scratch build.
 
 ## Where this slots into `PLAN.md`
@@ -100,7 +98,7 @@ Proposed replacement text for the `v0.18.2` entry in `PLAN.md` (drop this in ver
 **Goal**: Adopt MLAppInstaller (github.com/michaelhunley/MLAppInstaller — an external
 shared foundation, not a TA-internal crate) as TA's install/packaging engine instead of
 building a TA-only `ta-package`. Meridian and future plugin apps get cross-platform
-installer support from the same shared engine other adopting projects use, rather than TA
+installer support from the same shared engine CinePipeAi also adopted, rather than TA
 reimplementing packaging logic independently. See MLAppInstaller's
 `docs/migration/ta-migration.md` for the full mapping this phase is based on.
 
@@ -116,13 +114,11 @@ reimplementing packaging logic independently. See MLAppInstaller's
    hand-written platform/model logic into a `trusted-autonomy`-owned catalog fragment;
    swap `ta vtt install`'s detection branches for `mlai catalog resolve` calls. Land this
    before v0.18.3's platform-detection item is implemented, not after.
-4. [ ] **Distribution profile**: `mlai-package`/`mlai init`/`mlai package deploy` are
-   built and merged upstream as of 2026-08-19 (see MLAppInstaller's
-   `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`).
-   Run `mlai init` to author a distribution profile, then `mlai package build`/
-   `mlai package deploy` for signed Windows/Mac/Linux installers. This replaces the
-   original scope's `ta-package` extraction, GH Actions template, and code-signing
-   stubs items.
+4. [ ] **Distribution profile**: once `mlai-package` exists upstream (check
+   MLAppInstaller's own `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`
+   for status), author a distribution profile for signed Windows/Mac/Linux installers.
+   This replaces the original scope's `ta-package` extraction, GH Actions template, and
+   code-signing stubs items.
 5. [ ] **Meridian CI integration**: point Meridian's release workflow at the adopted
    MLAppInstaller distribution profile instead of a TA-internal packaging template.
 6. [ ] **Tests**: real end-to-end `mlai install`/`mlai repair` against TA's own manifest,
