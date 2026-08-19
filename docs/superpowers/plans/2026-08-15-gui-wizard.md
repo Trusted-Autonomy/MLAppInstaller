@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A Tauri 2 GUI (`mlai-gui`) that's a thin shell over today's `mlai-core`/`mlai-cli`, porting cinepipe-installer's actual working wizard (plain TypeScript frontend, no React) rather than writing one from scratch, reimplementing its 6 Tauri commands against `mlai-core` directly instead of their local module copies.
+**Goal:** A Tauri 2 GUI (`mlai-gui`) that's a thin shell over today's `mlai-core`/`mlai-cli`, porting a prior-art project's actual working wizard (plain TypeScript frontend, no React) rather than writing one from scratch, reimplementing its 6 Tauri commands against `mlai-core` directly instead of their local module copies.
 
-**Architecture:** `crates/mlai-gui/src-tauri/` (Rust, Tauri commands calling `mlai-core` in-process) + `crates/mlai-gui/src/` (TypeScript, ported from cinepipe's `wizard/src/main.ts`). Commands: `list_components`, `default_install_root`, `describe_component_options`, `read_install_status`, `run_install`. `add_project` (CinePipe's UE5 project-binding) is dropped — not generalized in this project's manifest schema yet.
+**Architecture:** `crates/mlai-gui/src-tauri/` (Rust, Tauri commands calling `mlai-core` in-process) + `crates/mlai-gui/src/` (TypeScript, ported from a prior-art project's `wizard/src/main.ts`). Commands: `list_components`, `default_install_root`, `describe_component_options`, `read_install_status`, `run_install`. `add_project` (the source project's UE5 project-binding) is dropped — not generalized in this project's manifest schema yet.
 
-**Tech Stack:** Tauri 2 (`tauri`, `tauri-build`), `@tauri-apps/api` ^2, Vite + TypeScript (matching cinepipe's frontend toolchain, minus `@tauri-apps/plugin-dialog` — that plugin only backed cinepipe's project-file picker, which this port drops along with `add_project`). Rust side depends on `mlai-core` (path dependency) plus `serde`.
+**Tech Stack:** Tauri 2 (`tauri`, `tauri-build`), `@tauri-apps/api` ^2, Vite + TypeScript (matching the source project's frontend toolchain, minus `@tauri-apps/plugin-dialog` — that plugin only backed the source project's project-file picker, which this port drops along with `add_project`). Rust side depends on `mlai-core` (path dependency) plus `serde`.
 
 ## Global Constraints
 
 - Commands call `mlai-core` in-process — no shelling out to the `mlai` binary (`docs/superpowers/specs/2026-08-15-gui-wizard-design.md`, Decision 3).
 - No new `mlai-core` API surface for progress streaming in this plan — `run_install`'s log view shows coarse per-component start/result lines the GUI command itself emits, not live setup-script stdout. This is a documented v1 cut (see design doc), not a silent gap; fine-grained streaming needs a `mlai-core` progress-callback addition that's explicitly out of scope here.
-- No GUI test harness — matches cinepipe's own accepted "manual verification only" posture for the frontend. The Rust command layer's own logic (manifest lookup, options translation, result summarization) gets real unit tests where it doesn't require an actual Tauri runtime.
-- Before every commit: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` all pass. `mlai-gui` joins the workspace; CI's existing 3-platform matrix will build it (Tauri's own platform system-dependency requirements — WebView2 on Windows, `webkit2gtk` on Linux — are already present on GitHub's hosted runners for `ubuntu-latest`/`windows-latest`/`macos-latest`, matching what cinepipe's own wizard already builds on in CI-equivalent environments; a genuine incompatibility here would need to be caught and fixed the same way three earlier Windows CI failures were this session).
+- No GUI test harness — matches a prior-art project's own accepted "manual verification only" posture for the frontend. The Rust command layer's own logic (manifest lookup, options translation, result summarization) gets real unit tests where it doesn't require an actual Tauri runtime.
+- Before every commit: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` all pass. `mlai-gui` joins the workspace; CI's existing 3-platform matrix will build it (Tauri's own platform system-dependency requirements — WebView2 on Windows, `webkit2gtk` on Linux — are already present on GitHub's hosted runners for `ubuntu-latest`/`windows-latest`/`macos-latest`, matching what the source project's own wizard already builds on in CI-equivalent environments; a genuine incompatibility here would need to be caught and fixed the same way three earlier Windows CI failures were this session).
 
 ## Out of scope for this plan
 
@@ -770,7 +770,7 @@ git commit -m "feat(mlai-gui): add run_install command with install/force/repair
 
 - [x] **Step 1: Write `index.html`'s body markup**
 
-Replace `crates/mlai-gui/index.html`'s `<body>` with the form structure the frontend expects (ported from cinepipe's wizard markup, re-skinned generic):
+Replace `crates/mlai-gui/index.html`'s `<body>` with the form structure the frontend expects (ported from the source project's wizard markup, re-skinned generic):
 ```html
   <body>
     <main>
@@ -824,7 +824,7 @@ body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 640px; }
 
 - [x] **Step 3: Write `src/main.ts`**
 
-`crates/mlai-gui/src/main.ts` — ported from cinepipe's `wizard/src/main.ts`, with these changes from the original: `Component`/`Manifest` TypeScript interfaces switched to this project's snake_case field names (`name`/`source_url`/`component_ref`/`default` — no `notes` field, since `mlai-core`'s `Component` doesn't have one yet); all `add_project`/project-binding code removed (dropped per this plan's scope); the mode selector's `"clean"` value renamed to `"force"` to match `run_install`'s actual mode strings; `ComponentResult`/`InstallOutcome` simplified to this project's flat `{name, outcome, message}` shape instead of cinepipe's externally-tagged enum enum enum shape:
+`crates/mlai-gui/src/main.ts` — ported from a prior-art project's `wizard/src/main.ts`, with these changes from the original: `Component`/`Manifest` TypeScript interfaces switched to this project's snake_case field names (`name`/`source_url`/`component_ref`/`default` — no `notes` field, since `mlai-core`'s `Component` doesn't have one yet); all `add_project`/project-binding code removed (dropped per this plan's scope); the mode selector's `"clean"` value renamed to `"force"` to match `run_install`'s actual mode strings; `ComponentResult`/`InstallOutcome` simplified to this project's flat `{name, outcome, message}` shape instead of the source project's externally-tagged enum shape:
 ```typescript
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -1143,13 +1143,13 @@ Run:
 ```bash
 cd crates/mlai-gui && npm install && npm run tauri dev
 ```
-Expected: a window opens showing "MLAppInstaller", loads (or reports a clear "manifest.toml not found" if none is present at the repo root — expected until a real manifest exists there), and the mode dropdown/install button render without console errors. This is the one step in this plan that isn't automatable — matches cinepipe's own accepted manual-verification posture for the frontend (see Global Constraints).
+Expected: a window opens showing "MLAppInstaller", loads (or reports a clear "manifest.toml not found" if none is present at the repo root — expected until a real manifest exists there), and the mode dropdown/install button render without console errors. This is the one step in this plan that isn't automatable — matches a prior-art project's own accepted manual-verification posture for the frontend (see Global Constraints).
 
 - [x] **Step 6: Commit**
 
 ```bash
 git add crates/mlai-gui/index.html crates/mlai-gui/src
-git commit -m "feat(mlai-gui): port frontend from cinepipe-installer, re-skinned generic"
+git commit -m "feat(mlai-gui): port frontend from prior-art source, re-skinned generic"
 ```
 (No git commit performed inside this TA-mediated staging session: integration happens via TA's draft/apply flow, per this goal's history.)
 
@@ -1207,6 +1207,6 @@ git commit -m "docs: document the GUI wizard"
 
 ## Self-Review Notes
 
-- **Spec coverage**: all 5 of cinepipe's non-project-binding commands are covered (`list_components`, `default_install_root`, `describe_component_options`, `read_install_status`, `run_install`), reimplemented against `mlai-core` directly per Decision 1 of the design doc. `add_project` is dropped per Decision 4, not silently missing.
-- **Placeholder scan**: no TBD/TODO markers. The frontend port (Task 5) is the one step without an automated test, and that's stated explicitly as a scope decision (matching cinepipe's own posture), not hidden.
-- **Type consistency**: `ComponentResult`/`InstallDone`/`describe_options_for`/`run_install_inner`/`summarize_results` are each defined once (Tasks 3–4) and used consistently; the frontend's TypeScript interfaces in Task 5 were updated to match this project's actual snake_case manifest field names rather than copying cinepipe's PascalCase verbatim.
+- **Spec coverage**: all 5 of the source project's non-project-binding commands are covered (`list_components`, `default_install_root`, `describe_component_options`, `read_install_status`, `run_install`), reimplemented against `mlai-core` directly per Decision 1 of the design doc. `add_project` is dropped per Decision 4, not silently missing.
+- **Placeholder scan**: no TBD/TODO markers. The frontend port (Task 5) is the one step without an automated test, and that's stated explicitly as a scope decision (matching a prior-art project's own posture), not hidden.
+- **Type consistency**: `ComponentResult`/`InstallDone`/`describe_options_for`/`run_install_inner`/`summarize_results` are each defined once (Tasks 3–4) and used consistently; the frontend's TypeScript interfaces in Task 5 were updated to match this project's actual snake_case manifest field names rather than copying the source project's PascalCase verbatim.

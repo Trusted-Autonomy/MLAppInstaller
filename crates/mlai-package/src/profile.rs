@@ -72,14 +72,14 @@ mod tests {
 
     const SAMPLE: &str = r#"
 [distribution]
-name = "cinepipe-director-suite"
+name = "example-app-suite"
 manifest = "manifest.toml"
-components = ["cinepipe-director", "ue5-cine-pipeline"]
+components = ["example-component", "ue5-plugin"]
 
 [[targets]]
 platform = "macos"
 format = "dmg"
-signing_identity = "keychain:Developer ID Application: CinePipeAi, Inc."
+signing_identity = "keychain:Developer ID Application: Example Studio, Inc."
 
 [[targets]]
 platform = "windows"
@@ -88,13 +88,13 @@ certificate_thumbprint = "AB12CD34EF56"
 
 [deploy]
 adapter = "github-releases"
-repo = "CinePipeAi/cinepipe-director"
+repo = "example-org/example-app"
 "#;
 
     #[test]
     fn parses_a_full_profile() {
         let profile = DistributionProfile::parse(SAMPLE).expect("valid profile");
-        assert_eq!(profile.distribution.name, "cinepipe-director-suite");
+        assert_eq!(profile.distribution.name, "example-app-suite");
         assert_eq!(profile.distribution.components.len(), 2);
         assert_eq!(profile.targets.len(), 2);
 
@@ -103,7 +103,7 @@ repo = "CinePipeAi/cinepipe-director"
         assert_eq!(macos.format, PackageFormat::Dmg);
         assert_eq!(
             macos.signing_identity.as_deref(),
-            Some("keychain:Developer ID Application: CinePipeAi, Inc.")
+            Some("keychain:Developer ID Application: Example Studio, Inc.")
         );
         assert!(macos.certificate_thumbprint.is_none());
 
@@ -116,7 +116,7 @@ repo = "CinePipeAi/cinepipe-director"
 
         let deploy = profile.deploy.expect("deploy config present");
         assert_eq!(deploy.adapter, "github-releases");
-        assert_eq!(deploy.repo.as_deref(), Some("CinePipeAi/cinepipe-director"));
+        assert_eq!(deploy.repo.as_deref(), Some("example-org/example-app"));
     }
 
     #[test]

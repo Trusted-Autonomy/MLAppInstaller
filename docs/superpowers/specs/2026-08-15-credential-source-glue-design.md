@@ -7,7 +7,7 @@
 
 `mlai` is an installer. It runs once, installs components, and exits. It must never become a place secret *values* live, even transiently on disk. That was Plan B's mistake: it ported TA's `ta-credentials` vault (age-encrypted store, OS-keychain-first custody) into the installer itself, complete with a `mlai credential set` command. That pattern is correct for TA — a long-running agent runtime that must broker scoped, revocable credentials to untrusted agent processes repeatedly, hence session tokens and TTLs — and wrong for an installer, which has no ongoing relationship with the secret at all.
 
-The real need, restated: when a component's manifest offers a hosted-model backend choice (cinepipe's existing local-vs-API pattern, generalized by this project's backend-options protocol), the user needs a way to tell that component *where to look* for its API key. The installer's job stops at collecting and passing through that pointer — never the value.
+The real need, restated: when a component's manifest offers a hosted-model backend choice (a prior-art project's existing local-vs-API pattern, generalized by this project's backend-options protocol), the user needs a way to tell that component *where to look* for its API key. The installer's job stops at collecting and passing through that pointer — never the value.
 
 ## Mechanism that (mostly) already exists
 

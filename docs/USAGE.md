@@ -156,8 +156,7 @@ mlai install --manifest manifest.toml --install-root ~/my-app --set model=qwen3:
 ```
 
 `--set key=value` is repeatable and passed straight through to the
-component's setup command, verbatim compatible with cinepipe-installer's
-existing `--set key=value` convention (see
+component's setup command (see
 `docs/superpowers/specs/2026-08-14-foundation-design.md`).
 
 ## Model catalog
@@ -171,9 +170,9 @@ fragments that *define* the same purpose differently is a hard error, not
 a silent pick:
 
 ```toml
-# fragment owned by cinepipe-stories
+# fragment owned by studio-a
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24

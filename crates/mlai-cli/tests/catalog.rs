@@ -18,7 +18,7 @@ fn resolve_prints_the_matching_model_to_stdout() {
         "catalog.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -55,7 +55,7 @@ fn resolve_fails_clearly_when_two_catalogs_conflict() {
         "a.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -67,7 +67,7 @@ model = "qwen3:8b"
         "b.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-director"
+owner = "studio-b"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -97,7 +97,7 @@ model = "llama3:8b"
 
     cmd.assert()
         .failure()
-        .stderr(contains("cinepipe-stories").and(contains("cinepipe-director")));
+        .stderr(contains("studio-a").and(contains("studio-b")));
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn resolve_fails_clearly_when_nothing_matches() {
         "catalog.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24

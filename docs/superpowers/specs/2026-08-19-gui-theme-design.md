@@ -5,7 +5,7 @@
 
 ## Problem
 
-`mlai-gui` currently has no theme handling at all: `styles.css` declares no explicit background/text colors (so it just inherits the WebView's default, effectively always light), and `#log-view` is hardcoded to a dark terminal look regardless of the rest of the page. The installed wizard should follow the end user's OS light/dark preference by default, with no in-app toggle for the end user to fight with the OS setting — but the adopter building a distribution (a TA/cinepipe engineer authoring `manifest.toml`) should be able to pin it to always-light or always-dark for their own branding reasons.
+`mlai-gui` currently has no theme handling at all: `styles.css` declares no explicit background/text colors (so it just inherits the WebView's default, effectively always light), and `#log-view` is hardcoded to a dark terminal look regardless of the rest of the page. The installed wizard should follow the end user's OS light/dark preference by default, with no in-app toggle for the end user to fight with the OS setting — but the adopter building a distribution (an engineer at an adopting project authoring `manifest.toml`) should be able to pin it to always-light or always-dark for their own branding reasons.
 
 ## Scope
 

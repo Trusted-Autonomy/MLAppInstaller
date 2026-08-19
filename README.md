@@ -4,22 +4,22 @@ A generic, reusable, cross-platform installer foundation for agentic apps that n
 
 ## Origin / requirements captured 2026-08-14
 
-Two existing Rust-based installers already solve pieces of this problem independently, and are duplicating effort:
+Multiple existing Rust-based installers across TrustedAutonomy's own projects already solve pieces of this problem independently, and are duplicating effort:
 
 1. **TrustedAutonomy's own installer** (`~/development/TrustedAutonomy/install_local.sh` + `scripts/bump-version.sh`, `scripts/setup-windows-dev.ps1`, `scripts/sign-windows.ps1` etc.) — handles Rust toolchain/binary install, Windows code-signing, cross-platform packaging for TA's own CLI + daemon.
-2. **CinePipeAi's installer** (`github.com/CinePipeAi/cinepipe-installer`, private repo) — a Rust-based installer with configurable local vs. API-key hosted model selection at install time for the CinePipeAi pipeline.
+2. **A partner project's installer** — a Rust-based installer with configurable local vs. API-key hosted model selection at install time for that product's own pipeline.
 
 Both solve the same underlying problem (cross-platform install, configurable local/cloud model backend selection, secure credential handling at install time) for different products. **MLAppInstaller's purpose**: extract the common foundation from both into one standalone project, so that:
 - TA's own installer
-- CinePipeAi's installer
+- Other adopting projects' installers
 - The new `agentic-pm` app's installer (see sibling repo, also scaffolded 2026-08-14 — explicitly wants to build its installer on top of this once ready)
 
-...can all eventually migrate to build on this shared foundation instead of maintaining three parallel implementations.
+...can all eventually migrate to build on this shared foundation instead of maintaining parallel implementations.
 
 ## Scope (from the founding conversation)
 
-- Cross-platform (matches TA and CinePipeAi's existing cross-platform targets).
-- Configurable at install time: local model backend vs. API-key-based hosted model backend — same pattern CinePipeAi already uses, generalized.
+- Cross-platform (matches every adopting project's existing cross-platform targets).
+- Configurable at install time: local model backend vs. API-key-based hosted model backend — a pattern already proven by an early adopter, generalized here.
 - Secure credential handling for the hosted-model-key path — TA's `ta-credentials` crate (age-encryption-at-rest, OS-keychain-first custody, chmod-0600 fallback — see TA's `crates/ta-credentials/src/encryption.rs`) is a proven reference implementation worth reviewing before designing this from scratch.
 - Cloud-hosting support: needs to support installing/configuring a daemon/engine for cloud deployment (e.g. Render.com), not just local desktop install — this came up specifically in the context of `agentic-pm`'s cloud-template requirement, but should be a general capability of this installer, not bolted on later.
 
@@ -28,14 +28,13 @@ Both solve the same underlying problem (cross-platform install, configurable loc
 Four crates, one engine, three surfaces. `mlai-core` owns the manifest schema and the
 install pipeline; `mlai-credentials` is TA's proven vault, generalized; `mlai-cloud`
 generates deploy config and discovers optional provider adapters; `mlai-cli` is the only
-v1 surface (a GUI wizard, rebuilt from cinepipe's Tauri prototype, is a fast-follow, not
-v1).
+v1 surface (a GUI wizard is a fast-follow, not v1).
 
 ```mermaid
 graph TD
     subgraph Consumers
         TA[TA installer]
-        CP[CinePipe installer]
+        Adopter[Adopting project's installer]
         PM[agentic-pm installer]
     end
     subgraph MLAppInstaller
@@ -50,7 +49,7 @@ graph TD
     end
 
     TA -- manifest.toml --> Core
-    CP -- manifest.toml --> Core
+    Adopter -- manifest.toml --> Core
     PM -- manifest.toml --> Core
     Core --> CLI
     Cred --> CLI
@@ -76,9 +75,9 @@ stateDiagram-v2
     NeedsAttention --> [*]
 ```
 
-**Local vs. cloud backend selection** generalizes cinepipe's Setup Options Protocol
-(`--describe-options` / `--set key=value`) beyond CinePipe-specific model "purposes" to
-any component's local-vs-hosted choice:
+**Local vs. cloud backend selection** generalizes an early adopter's own Setup Options
+Protocol (`--describe-options` / `--set key=value`) beyond one product's specific model
+"purposes" to any component's local-vs-hosted choice:
 
 ```mermaid
 flowchart LR
@@ -97,11 +96,11 @@ Full rationale, the cloud config-generation flow, and deferred scope are in the
 ## Key decisions (2026-08-14)
 
 - **Absorbs TA's `v0.18.2` roadmap item** (`ta-package` + cross-platform installer) — TA's `PLAN.md` gets a follow-up edit to point at this repo instead of building a parallel extraction.
-- **Single Rust codebase, cross-compiled** — not cinepipe's PowerShell/bash script-twin pattern, which drifts.
-- **CLI/engine first; GUI is a fast-follow** reusing cinepipe's Tauri prototype.
+- **Single Rust codebase, cross-compiled** — not the hand-synced PowerShell/bash script-twin pattern seen in prior-art installers, which drifts.
+- **CLI/engine first; GUI is a fast-follow.**
 - **Cloud install v1 = config generation only** (Dockerfile, deploy manifest, secrets template); live provisioning is delegated to community-contributable, externally discovered provider adapters (`mlai-provider-aws`, `mlai-provider-render`, ...) — core ships zero provider-specific code.
-- Migration timeline for TA and CinePipeAi's existing installers to adopt this, and the relationship to `agentic-pm`'s installer, are explicit follow-ups — not blocking, done once this foundation is proven.
+- Migration timeline for TA's and other adopting projects' existing installers to adopt this, and the relationship to `agentic-pm`'s installer, are explicit follow-ups — not blocking, done once this foundation is proven.
 
 ## Status
 
-Design confirmed 2026-08-14 — see the [foundation design spec](docs/superpowers/specs/2026-08-14-foundation-design.md). Next: Superpowers implementation planning (`writing-plans`), then execution via TA-mediated goals (`.ta/` is already live in this repo — see `CLAUDE.md`). Retrofitting TA's and CinePipeAi's own installers onto this base, and `agentic-pm`'s installer, are explicit follow-up tasks once this foundation lands.
+Design confirmed 2026-08-14 — see the [foundation design spec](docs/superpowers/specs/2026-08-14-foundation-design.md). Next: Superpowers implementation planning (`writing-plans`), then execution via TA-mediated goals (`.ta/` is already live in this repo — see `CLAUDE.md`). Retrofitting TA's and other adopting projects' own installers onto this base, and `agentic-pm`'s installer, are explicit follow-up tasks once this foundation lands.

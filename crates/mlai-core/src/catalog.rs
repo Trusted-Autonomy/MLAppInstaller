@@ -174,7 +174,7 @@ mod tests {
 
     const SAMPLE: &str = r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24
@@ -201,7 +201,7 @@ requires_os = ["macos"]
         assert_eq!(fragment.purposes.len(), 2);
 
         let text_json = &fragment.purposes["text-structured-json"];
-        assert_eq!(text_json.owner, "cinepipe-stories");
+        assert_eq!(text_json.owner, "studio-a");
         assert_eq!(text_json.tiers.len(), 2);
         assert_eq!(text_json.tiers[0].min_vram_gb, 24.0);
         assert_eq!(text_json.tiers[0].model, "qwen3:32b");
@@ -233,7 +233,7 @@ model = "small-model"
     fn a_purpose_with_no_tiers_is_a_valid_reference() {
         let toml = r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 "#;
         let fragment = CatalogFragment::parse(toml).unwrap();
         assert!(fragment.purposes["text-structured-json"].tiers.is_empty());
@@ -277,7 +277,7 @@ owner = "cinepipe-stories"
         let mut a = CatalogFragment::default();
         a.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]),
+            purpose("studio-a", vec![tier(8.0, "qwen3:8b")]),
         );
         let mut b = CatalogFragment::default();
         b.purposes.insert(
@@ -299,13 +299,12 @@ owner = "cinepipe-stories"
         let mut owner_fragment = CatalogFragment::default();
         owner_fragment.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]),
+            purpose("studio-a", vec![tier(8.0, "qwen3:8b")]),
         );
         let mut reference_fragment = CatalogFragment::default();
-        reference_fragment.purposes.insert(
-            "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![]),
-        );
+        reference_fragment
+            .purposes
+            .insert("text-structured-json".into(), purpose("studio-a", vec![]));
 
         let merged = merge_fragments(&[owner_fragment, reference_fragment]).unwrap();
         assert_eq!(
@@ -319,7 +318,7 @@ owner = "cinepipe-stories"
         let mut a = CatalogFragment::default();
         a.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]),
+            purpose("studio-a", vec![tier(8.0, "qwen3:8b")]),
         );
         let b = a.clone();
 
@@ -335,12 +334,12 @@ owner = "cinepipe-stories"
         let mut a = CatalogFragment::default();
         a.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]),
+            purpose("studio-a", vec![tier(8.0, "qwen3:8b")]),
         );
         let mut b = CatalogFragment::default();
         b.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-director", vec![tier(8.0, "llama3:8b")]),
+            purpose("studio-b", vec![tier(8.0, "llama3:8b")]),
         );
 
         let err = merge_fragments(&[a, b]).unwrap_err();
@@ -351,8 +350,8 @@ owner = "cinepipe-stories"
                 owner_b,
             } => {
                 assert_eq!(purpose, "text-structured-json");
-                assert_eq!(owner_a, "cinepipe-stories");
-                assert_eq!(owner_b, "cinepipe-director");
+                assert_eq!(owner_a, "studio-a");
+                assert_eq!(owner_b, "studio-b");
             }
             other => panic!("expected Conflict, got {other:?}"),
         }
@@ -361,15 +360,11 @@ owner = "cinepipe-stories"
     #[test]
     fn different_owners_for_the_same_purpose_is_a_hard_error_even_with_no_tiers() {
         let mut a = CatalogFragment::default();
-        a.purposes.insert(
-            "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![]),
-        );
+        a.purposes
+            .insert("text-structured-json".into(), purpose("studio-a", vec![]));
         let mut b = CatalogFragment::default();
-        b.purposes.insert(
-            "text-structured-json".into(),
-            purpose("cinepipe-director", vec![]),
-        );
+        b.purposes
+            .insert("text-structured-json".into(), purpose("studio-b", vec![]));
 
         let err = merge_fragments(&[a, b]).unwrap_err();
         assert!(matches!(err, CatalogError::Conflict { .. }));
@@ -381,7 +376,7 @@ owner = "cinepipe-stories"
         a.purposes.insert(
             "text-structured-json".into(),
             purpose(
-                "cinepipe-stories",
+                "studio-a",
                 vec![
                     tier(24.0, "qwen3:32b"),
                     tier(8.0, "qwen3:8b"),
@@ -417,7 +412,7 @@ owner = "cinepipe-stories"
         a.purposes.insert(
             "text-structured-json".into(),
             purpose(
-                "cinepipe-stories",
+                "studio-a",
                 vec![tier(24.0, "qwen3:32b"), tier(8.0, "qwen3:8b")],
             ),
         );

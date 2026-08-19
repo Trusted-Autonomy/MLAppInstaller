@@ -54,7 +54,7 @@ pub enum OptionsError {
 
 /// Probes a component's setup command for the backend-options protocol.
 ///
-/// Per the protocol (and cinepipe-installer's own safety rationale), a
+/// Per the protocol's own safety rationale, a
 /// caller MUST NOT call this unless the component's manifest entry
 /// explicitly declares `supports_options_protocol = true` — an unpatched
 /// setup script could silently run its real, side-effecting setup if

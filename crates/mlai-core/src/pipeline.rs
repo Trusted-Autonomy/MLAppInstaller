@@ -78,8 +78,7 @@ pub fn repair_component(
 
 /// Finds every already-installed component matching `project_type`,
 /// substitutes `project_path` for a `{project}` placeholder in its setup
-/// command args, and force-reinstalls it -- the same semantics as
-/// cinepipe-installer's original `add_project`: untagged components and
+/// command args, and force-reinstalls it: untagged components and
 /// tagged-but-not-yet-installed components are left completely untouched.
 pub fn bind_project(
     manifest: &crate::manifest::Manifest,
@@ -283,10 +282,8 @@ mod tests {
         let file = fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
         let options = zip::write::SimpleFileOptions::default();
-        zip.add_directory("ue5-cine-pipeline-main/", options)
-            .unwrap();
-        zip.start_file("ue5-cine-pipeline-main/setup.sh", options)
-            .unwrap();
+        zip.add_directory("ue5-plugin-main/", options).unwrap();
+        zip.start_file("ue5-plugin-main/setup.sh", options).unwrap();
         zip.write_all(b"#!/bin/sh\necho \"$@\" > argv.txt\ntouch marker.txt\n")
             .unwrap();
         zip.finish().unwrap();
@@ -770,8 +767,8 @@ mod tests {
         let fetcher = FixtureFetcher { zip_path };
 
         let ue5 = Component {
-            name: "ue5-cine-pipeline".into(),
-            source_url: "https://example.com/ue5-cine-pipeline.zip".into(),
+            name: "ue5-plugin".into(),
+            source_url: "https://example.com/ue5-plugin.zip".into(),
             component_ref: "main".into(),
             default: true,
             setup: PlatformSetup {
@@ -816,11 +813,10 @@ mod tests {
         );
 
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].0, "ue5-cine-pipeline");
+        assert_eq!(results[0].0, "ue5-plugin");
         assert_eq!(results[0].1.as_ref().unwrap(), &ComponentState::Healthy);
 
-        let argv =
-            fs::read_to_string(root.path().join("ue5-cine-pipeline").join("argv.txt")).unwrap();
+        let argv = fs::read_to_string(root.path().join("ue5-plugin").join("argv.txt")).unwrap();
         assert!(
             argv.contains("/fake/MyGame.uproject"),
             "the {{project}} placeholder must be substituted with the real path: {argv}"

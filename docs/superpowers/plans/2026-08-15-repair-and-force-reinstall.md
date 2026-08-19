@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the last capability gap between this project and cinepipe-installer's proven Rust engine: `mlai repair` (re-verify a component directly against disk, ignoring `installed.json`'s recorded state, so a manually broken install gets fixed rather than silently staying "healthy" forever) and `mlai install --force` (reinstall a component unconditionally, matching cinepipe's `-Force`).
+**Goal:** Close the last capability gap between this project and a prior-art proven Rust installer engine: `mlai repair` (re-verify a component directly against disk, ignoring `installed.json`'s recorded state, so a manually broken install gets fixed rather than silently staying "healthy" forever) and `mlai install --force` (reinstall a component unconditionally, matching a prior-art installer's own force-reinstall flag).
 
-**Architecture:** Extracts the existing `install_component`'s backup→fetch→unpack→setup→health→record sequence into a shared private helper (`run_install_sequence`), so `install_component` (trusts recorded state, unless `force`) and a new `repair_component` (always re-verifies disk, regardless of recorded state) share one implementation of the actual install mechanics rather than duplicating it. This mirrors cinepipe-installer's own `install_component`/`repair_component` split (`components.rs`) exactly — both call a shared `download_unpack_setup_and_health` tail.
+**Architecture:** Extracts the existing `install_component`'s backup→fetch→unpack→setup→health→record sequence into a shared private helper (`run_install_sequence`), so `install_component` (trusts recorded state, unless `force`) and a new `repair_component` (always re-verifies disk, regardless of recorded state) share one implementation of the actual install mechanics rather than duplicating it. This mirrors the source installer's own `install_component`/`repair_component` split (`components.rs`) exactly — both call a shared `download_unpack_setup_and_health` tail.
 
 **Tech Stack:** No new dependencies.
 
@@ -17,9 +17,9 @@
 
 ## Out of scope for this plan
 
-- Remote-version resolution (detecting that a newer commit/release exists upstream and should be pulled) — cinepipe's `remote_version` resolves this via the GitHub commits API specifically, which would reintroduce the GitHub-specific coupling this project's generic `source_url` design deliberately avoided (see `docs/superpowers/specs/2026-08-14-foundation-design.md`). `--force` covers "reinstall from whatever `source_url` currently serves" without deciding that architecture question; real update-detection is a future design exploration, not decided here.
+- Remote-version resolution (detecting that a newer commit/release exists upstream and should be pulled) — the source installer's own `remote_version` resolves this via the GitHub commits API specifically, which would reintroduce the GitHub-specific coupling this project's generic `source_url` design deliberately avoided (see `docs/superpowers/specs/2026-08-14-foundation-design.md`). `--force` covers "reinstall from whatever `source_url` currently serves" without deciding that architecture question; real update-detection is a future design exploration, not decided here.
 - `--dry-run` for `install`/`repair` — `uninstall` already has it (the highest-risk operation); extending it to install/repair is a reasonable follow-up, not required for this plan's scope.
-- `mlai-cloud`, the credential-source glue design, and TA/CinePipe migration guides remain separate, already-tracked follow-ups.
+- `mlai-cloud`, the credential-source glue design, and TA/adopter migration guides remain separate, already-tracked follow-ups.
 
 ---
 
@@ -230,7 +230,7 @@ git commit -m "refactor(mlai-core): extract shared install sequence, add force o
 - Consumes: `run_install_sequence`, `apply_removals_and_persist_manifest_version` (Task 1, same file).
 - Produces: `mlai_core::pipeline::repair_component(component: &Component, manifest: &Manifest, opts: &PipelineOptions) -> Result<(ComponentState, bool), PipelineError>` — the `bool` is `reinstalled`: `false` when the component was found genuinely healthy on disk (zero filesystem changes made), `true` when it fell through to a full reinstall.
 
-**Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/components.rs`'s `repair_component` — same real-disk-health-check-first semantics (ignores `installed.json`'s recorded state entirely, unlike `install_component`'s trust-based shortcut), same "zero filesystem changes when genuinely healthy" guarantee their own test suite verifies.
+**Ported from**: the source installer's `wizard/src-tauri/src/components.rs`'s `repair_component` — same real-disk-health-check-first semantics (ignores `installed.json`'s recorded state entirely, unlike `install_component`'s trust-based shortcut), same "zero filesystem changes when genuinely healthy" guarantee their own test suite verifies.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -394,7 +394,7 @@ Expected: PASS — all modules green.
 
 ```bash
 git add crates/mlai-core/src/pipeline.rs
-git commit -m "feat(mlai-core): add repair_component (ported from cinepipe-installer)"
+git commit -m "feat(mlai-core): add repair_component (ported from the source installer)"
 ```
 
 ---
@@ -885,6 +885,6 @@ Expected: PASS on the local platform. CI verifies all three (ubuntu-latest, maco
 
 ## Self-Review Notes
 
-- **Spec coverage**: `repair` (ported closely from cinepipe-installer's proven `repair_component`, matching its exact "zero changes when genuinely healthy, even with no recorded state" guarantee) and `--force` (matching cinepipe's `-Force`) are both covered. Remote-version detection is explicitly out of scope (architecture question deferred, not a gap) — see "Out of scope" above.
+- **Spec coverage**: `repair` (ported closely from the source installer's proven `repair_component`, matching its exact "zero changes when genuinely healthy, even with no recorded state" guarantee) and `--force` (matching a prior-art installer's own force-reinstall flag) are both covered. Remote-version detection is explicitly out of scope (architecture question deferred, not a gap) — see "Out of scope" above.
 - **Placeholder scan**: no TBD/TODO markers; every step has complete, runnable code.
 - **Type consistency**: `PipelineOptions.force`, `run_install_sequence`, `apply_removals_and_persist_manifest_version`, and `repair_component`'s `(ComponentState, bool)` return shape are each defined once (Tasks 1–2) and consumed identically in Tasks 3–4.

@@ -1,12 +1,11 @@
 // Guarded removals: apply per-manifest-version legacy cleanup and full
 // uninstall, with a path guard that resolves a manifest-supplied relative
 // path component-by-component so the result can never leave install_root's
-// own subtree. Ported from cinepipe-installer's cleanup.rs, which itself
-// documents and fixes a real prefix-confusion vulnerability present in an
-// earlier PowerShell implementation (a naive `path.starts_with(root)` check
-// incorrectly accepts a sibling directory like "CinePipeEvil" when root is
-// "CinePipe"). This construction-based guard is a stronger fix, not just a
-// different implementation of the same check.
+// own subtree. This fixes a real prefix-confusion vulnerability class: a
+// naive `path.starts_with(root)` check incorrectly accepts a sibling
+// directory like "MyAppEvil" when root is "MyApp". This construction-based
+// guard is a stronger fix, not just a different implementation of the same
+// check.
 
 use crate::manifest::RemovalEntry;
 use crate::versioning::compare_version;

@@ -285,8 +285,8 @@ paths = ["hello-component/legacy_tool.py"]
         manifest_version = "1.0.0"
 
         [[components]]
-        name = "ue5-cine-pipeline"
-        source_url = "https://example.com/ue5-cine-pipeline.zip"
+        name = "ue5-plugin"
+        source_url = "https://example.com/ue5-plugin.zip"
         ref = "main"
         binds_to_project_type = "UE5"
 

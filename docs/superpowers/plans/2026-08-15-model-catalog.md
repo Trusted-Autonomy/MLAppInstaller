@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The first piece of the distribution-packaging framework: a model catalog mechanism in `mlai-core` that lets multiple independently-developed sub-projects each contribute hardware→model tier data for purposes they own, merged with hard-error conflict detection rather than a single central file or silent coalescing — generalizing cinepipe's proven mechanism (not its data) for a world with no central authority.
+**Goal:** The first piece of the distribution-packaging framework: a model catalog mechanism in `mlai-core` that lets multiple independently-developed sub-projects each contribute hardware→model tier data for purposes they own, merged with hard-error conflict detection rather than a single central file or silent coalescing — generalizing a proven mechanism (not the data) from prior art for a world with no central authority.
 
 **Architecture:** New `mlai-core::catalog` module: `HardwareProfile` (OS, GPU vendor, raw + effective VRAM, disk), `ModelTier` (min VRAM plus optional vendor/OS constraints), `Purpose` (owner + tiers), `CatalogFragment` (one TOML file, parsed), a merge function that loads N fragments and either produces one `MergedCatalog` or a named conflict error, and `MergedCatalog::resolve` (purpose + profile → best-fit model). A `mlai catalog resolve` CLI command exposes this to any setup script regardless of language.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Conflict detection is a hard error naming both fragments' owners, never a silent pick or coalesce (`docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`, Decision 3 — this is the mechanism that prevents the fragmentation bug cinepipe already hit once).
+- Conflict detection is a hard error naming both fragments' owners, never a silent pick or coalesce (`docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`, Decision 3 — this is the mechanism that prevents the fragmentation bug a prior-art project already hit once).
 - Real hardware auto-detection is out of scope — `resolve` takes a `HardwareProfile` as a plain input value; how it's produced isn't this plan's concern (design doc, "Explicitly out of scope").
 - Before every commit: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` all pass on all three CI platforms.
 
@@ -40,7 +40,7 @@ mod tests {
 
     const SAMPLE: &str = r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24
@@ -67,7 +67,7 @@ requires_os = ["macos"]
         assert_eq!(fragment.purposes.len(), 2);
 
         let text_json = &fragment.purposes["text-structured-json"];
-        assert_eq!(text_json.owner, "cinepipe-stories");
+        assert_eq!(text_json.owner, "studio-a");
         assert_eq!(text_json.tiers.len(), 2);
         assert_eq!(text_json.tiers[0].min_vram_gb, 24.0);
         assert_eq!(text_json.tiers[0].model, "qwen3:32b");
@@ -99,7 +99,7 @@ model = "small-model"
     fn a_purpose_with_no_tiers_is_a_valid_reference() {
         let toml = r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 "#;
         let fragment = CatalogFragment::parse(toml).unwrap();
         assert!(fragment.purposes["text-structured-json"].tiers.is_empty());
@@ -254,7 +254,7 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
     #[test]
     fn merges_purposes_from_multiple_fragments_that_dont_overlap() {
         let mut a = CatalogFragment::default();
-        a.purposes.insert("text-structured-json".into(), purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]));
+        a.purposes.insert("text-structured-json".into(), purpose("studio-a", vec![tier(8.0, "qwen3:8b")]));
         let mut b = CatalogFragment::default();
         b.purposes.insert("voice-transcription".into(), purpose("trusted-autonomy", vec![tier(0.0, "parakeet-mlx")]));
 
@@ -268,11 +268,11 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
         let mut owner_fragment = CatalogFragment::default();
         owner_fragment
             .purposes
-            .insert("text-structured-json".into(), purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]));
+            .insert("text-structured-json".into(), purpose("studio-a", vec![tier(8.0, "qwen3:8b")]));
         let mut reference_fragment = CatalogFragment::default();
         reference_fragment
             .purposes
-            .insert("text-structured-json".into(), purpose("cinepipe-stories", vec![]));
+            .insert("text-structured-json".into(), purpose("studio-a", vec![]));
 
         let merged = merge_fragments(&[owner_fragment, reference_fragment]).unwrap();
         assert_eq!(
@@ -284,7 +284,7 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
     #[test]
     fn two_fragments_defining_the_same_purpose_identically_is_not_a_conflict() {
         let mut a = CatalogFragment::default();
-        a.purposes.insert("text-structured-json".into(), purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]));
+        a.purposes.insert("text-structured-json".into(), purpose("studio-a", vec![tier(8.0, "qwen3:8b")]));
         let b = a.clone();
 
         let merged = merge_fragments(&[a, b]).unwrap();
@@ -297,16 +297,16 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
     #[test]
     fn two_fragments_disagreeing_on_the_same_purpose_is_a_hard_error() {
         let mut a = CatalogFragment::default();
-        a.purposes.insert("text-structured-json".into(), purpose("cinepipe-stories", vec![tier(8.0, "qwen3:8b")]));
+        a.purposes.insert("text-structured-json".into(), purpose("studio-a", vec![tier(8.0, "qwen3:8b")]));
         let mut b = CatalogFragment::default();
-        b.purposes.insert("text-structured-json".into(), purpose("cinepipe-director", vec![tier(8.0, "llama3:8b")]));
+        b.purposes.insert("text-structured-json".into(), purpose("studio-b", vec![tier(8.0, "llama3:8b")]));
 
         let err = merge_fragments(&[a, b]).unwrap_err();
         match err {
             CatalogError::Conflict { purpose, owner_a, owner_b } => {
                 assert_eq!(purpose, "text-structured-json");
-                assert_eq!(owner_a, "cinepipe-stories");
-                assert_eq!(owner_b, "cinepipe-director");
+                assert_eq!(owner_a, "studio-a");
+                assert_eq!(owner_b, "studio-b");
             }
             other => panic!("expected Conflict, got {other:?}"),
         }
@@ -315,9 +315,9 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module:
     #[test]
     fn different_owners_for_the_same_purpose_is_a_hard_error_even_with_no_tiers() {
         let mut a = CatalogFragment::default();
-        a.purposes.insert("text-structured-json".into(), purpose("cinepipe-stories", vec![]));
+        a.purposes.insert("text-structured-json".into(), purpose("studio-a", vec![]));
         let mut b = CatalogFragment::default();
-        b.purposes.insert("text-structured-json".into(), purpose("cinepipe-director", vec![]));
+        b.purposes.insert("text-structured-json".into(), purpose("studio-b", vec![]));
 
         let err = merge_fragments(&[a, b]).unwrap_err();
         assert!(matches!(err, CatalogError::Conflict { .. }));
@@ -424,7 +424,7 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module (the `profile()` helper f
         a.purposes.insert(
             "text-structured-json".into(),
             purpose(
-                "cinepipe-stories",
+                "studio-a",
                 vec![tier(24.0, "qwen3:32b"), tier(8.0, "qwen3:8b"), tier(0.0, "qwen3:4b")],
             ),
         );
@@ -446,7 +446,7 @@ Add to `crates/mlai-core/src/catalog.rs`'s test module (the `profile()` helper f
         let mut a = CatalogFragment::default();
         a.purposes.insert(
             "text-structured-json".into(),
-            purpose("cinepipe-stories", vec![tier(24.0, "qwen3:32b"), tier(8.0, "qwen3:8b")]),
+            purpose("studio-a", vec![tier(24.0, "qwen3:32b"), tier(8.0, "qwen3:8b")]),
         );
         let merged = merge_fragments(&[a]).unwrap();
 
@@ -577,7 +577,7 @@ fn resolve_prints_the_matching_model_to_stdout() {
         "catalog.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -614,7 +614,7 @@ fn resolve_fails_clearly_when_two_catalogs_conflict() {
         "a.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -626,7 +626,7 @@ model = "qwen3:8b"
         "b.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-director"
+owner = "studio-b"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 8
@@ -656,7 +656,7 @@ model = "llama3:8b"
 
     cmd.assert()
         .failure()
-        .stderr(contains("cinepipe-stories").and(contains("cinepipe-director")));
+        .stderr(contains("studio-a").and(contains("studio-b")));
 }
 
 #[test]
@@ -667,7 +667,7 @@ fn resolve_fails_clearly_when_nothing_matches() {
         "catalog.toml",
         r#"
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24
@@ -906,9 +906,9 @@ fragments that *define* the same purpose differently is a hard error, not
 a silent pick:
 
 ```toml
-# fragment owned by cinepipe-stories
+# fragment owned by studio-a
 [purposes.text-structured-json]
-owner = "cinepipe-stories"
+owner = "studio-a"
 
 [[purposes.text-structured-json.tiers]]
 min_vram_gb = 24

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close two real gaps surfaced by comparing this project against cinepipe-installer's mature, tested Rust port (`feat/unified-rust-installer` branch, unmerged, ~3,400 lines): (1) the manifest can't express a component whose setup/health genuinely differs by OS, and (2) there's no safe way to remove files on upgrade or fully uninstall. Both are ported closely from that branch's `manifest.rs`/`cleanup.rs`, generalized (no CinePipe-specific fields, TOML/snake_case instead of their legacy-compat PascalCase JSON).
+**Goal:** Close two real gaps surfaced by comparing this project against a mature, tested prior-art Rust installer port (an unmerged branch, ~3,400 lines): (1) the manifest can't express a component whose setup/health genuinely differs by OS, and (2) there's no safe way to remove files on upgrade or fully uninstall. Both are ported closely from that branch's `manifest.rs`/`cleanup.rs`, generalized (no product-specific fields, TOML/snake_case instead of their legacy-compat PascalCase JSON).
 
-**Architecture:** `Component.setup`/`health`/`supports_options_protocol` become per-platform (`windows`/`posix`) structs with `_for_current_os()` accessor methods — the manifest can express two different setup commands, but `mlai` itself stays one cross-compiled binary that picks the right one via `cfg!(target_os = ...)` at runtime (no script twins). A new `mlai-core::removals` module ports cleanup.rs's hardened `safe_target` path guard, `apply_removals` (per-manifest-version legacy cleanup), and `clean_install` (full uninstall) essentially verbatim — the algorithm has no CinePipe-specific assumptions at all. A new `mlai-core::versioning` module ports `compare_version` (dotted-version comparison) to decide which `Removals` entries apply on upgrade.
+**Architecture:** `Component.setup`/`health`/`supports_options_protocol` become per-platform (`windows`/`posix`) structs with `_for_current_os()` accessor methods — the manifest can express two different setup commands, but `mlai` itself stays one cross-compiled binary that picks the right one via `cfg!(target_os = ...)` at runtime (no script twins). A new `mlai-core::removals` module ports cleanup.rs's hardened `safe_target` path guard, `apply_removals` (per-manifest-version legacy cleanup), and `clean_install` (full uninstall) essentially verbatim — the algorithm has no product-specific assumptions at all. A new `mlai-core::versioning` module ports `compare_version` (dotted-version comparison) to decide which `Removals` entries apply on upgrade.
 
 **Tech Stack:** No new dependencies. Same crates as Plan A/B.
 
@@ -14,14 +14,14 @@
 - Any path removed during upgrade or uninstall must be validated to resolve inside the install root — no exceptions (`docs/CONSTITUTION.md` §3.3).
 - Uninstall confirms before deleting, unless `--yes` is passed; `--dry-run` is always available and must reflect exactly what a real run would do (`docs/CONSTITUTION.md` §1.2).
 - Before every commit: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` all pass (`docs/CONSTITUTION.md` §5).
-- Ported code should closely match cinepipe-installer's proven algorithm and test coverage, not be reinvented from a paraphrase — see each task's "Ported from" note for the exact source file/function.
+- Ported code should closely match the source installer's proven algorithm and test coverage, not be reinvented from a paraphrase — see each task's "Ported from" note for the exact source file/function.
 
 ## Out of scope for this plan
 
-- Repair mode (re-run setup+health without redownloading) and `mlai update` (remote version resolution via GitHub API, upgrade-in-place) — genuinely separate, larger pieces from cinepipe's `versioning.rs`/`components.rs`; a follow-up plan.
+- Repair mode (re-run setup+health without redownloading) and `mlai update` (remote version resolution via GitHub API, upgrade-in-place) — genuinely separate, larger pieces from the source installer's own `versioning.rs`/`components.rs`; a follow-up plan.
 - `mlai-cloud` (config generation + provider adapters) — a separate plan.
 - The credential-source glue design (`docs/superpowers/specs/2026-08-15-credential-source-glue-design.md`) — explicitly on hold.
-- Project-binding (cinepipe's `BindsToProjectType`/UE5 concept) — worth generalizing eventually, not needed for this plan's scope.
+- Project-binding (the source installer's `BindsToProjectType`/UE5 concept) — worth generalizing eventually, not needed for this plan's scope.
 - Windows setup commands actually being tested — CI remains `ubuntu-latest` only; the `windows` half of each `Platform*` struct is exercised by unit tests asserting the *selection logic*, not by running real Windows commands.
 
 ---
@@ -37,7 +37,7 @@
 **Interfaces:**
 - Produces: `mlai_core::manifest::{PlatformSetup, PlatformHealth, PlatformFlag}` (each `Default`). `Component.setup: PlatformSetup`, `Component.health: PlatformHealth`, `Component.supports_options_protocol: PlatformFlag` (all `#[serde(default)]`, replacing the Plan A/B flat `Option<SetupCommand>`/`Option<HealthCheck>`/`bool` fields — a breaking schema change, acceptable pre-1.0). `Component::setup_for_current_os(&self) -> Option<&SetupCommand>`, `Component::health_for_current_os(&self) -> Option<&HealthCheck>`, `Component::supports_options_protocol_for_current_os(&self) -> bool`.
 
-**Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/manifest.rs`'s `PlatformSetup`/`PlatformHealth`/`PlatformFlag`/`setup_for_current_os`/`health_for_current_os`/`supports_options_protocol_for_current_os` — field names generalized from their PascalCase-JSON (`Setup`/`Health`/`SupportsOptionsProtocol`) to this project's existing snake_case/TOML convention; the `windows`/`posix` split and the `cfg!(target_os = ...)` selection logic are unchanged.
+**Ported from**: the source installer's `wizard/src-tauri/src/manifest.rs`'s `PlatformSetup`/`PlatformHealth`/`PlatformFlag`/`setup_for_current_os`/`health_for_current_os`/`supports_options_protocol_for_current_os` — field names generalized from their PascalCase-JSON (`Setup`/`Health`/`SupportsOptionsProtocol`) to this project's existing snake_case/TOML convention; the `windows`/`posix` split and the `cfg!(target_os = ...)` selection logic are unchanged.
 
 - [x] **Step 1: Write the failing test**
 
@@ -336,7 +336,7 @@ Expected: PASS — all tests across the workspace, including the new manifest te
 
 ```bash
 git add crates/mlai-core/src/manifest.rs crates/mlai-core/src/pipeline.rs crates/mlai-cli/src/commands/install.rs crates/mlai-cli/tests/install.rs
-git commit -m "feat(mlai-core): retrofit manifest for per-platform setup/health (ported from cinepipe-installer)"
+git commit -m "feat(mlai-core): retrofit manifest for per-platform setup/health (ported from the source installer)"
 ```
 
 ---
@@ -350,7 +350,7 @@ git commit -m "feat(mlai-core): retrofit manifest for per-platform setup/health 
 **Interfaces:**
 - Produces: `mlai_core::versioning::compare_version(a: &str, b: &str) -> std::cmp::Ordering`.
 
-**Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/versioning.rs`'s `compare_version` — verbatim algorithm (element-wise dotted-integer comparison, non-numeric segments treated as 0, shorter side implicitly zero-padded). `remote_version`/`extract_commit_sha`/the `Installed` JSON-schema types are NOT ported here — they belong to the deferred `mlai update` plan.
+**Ported from**: the source installer's `wizard/src-tauri/src/versioning.rs`'s `compare_version` — verbatim algorithm (element-wise dotted-integer comparison, non-numeric segments treated as 0, shorter side implicitly zero-padded). `remote_version`/`extract_commit_sha`/the `Installed` JSON-schema types are NOT ported here — they belong to the deferred `mlai update` plan.
 
 - [x] **Step 1: Write the failing test**
 
@@ -403,7 +403,7 @@ use std::cmp::Ordering;
 
 /// Dotted-version comparison ("1.2.0" vs "1.10.0", element-wise as integers,
 /// non-numeric segments treated as 0, the shorter side implicitly
-/// zero-padded). Ported from cinepipe-installer's `compare_version`.
+/// zero-padded). Ported from the source installer's `compare_version`.
 pub fn compare_version(a: &str, b: &str) -> Ordering {
     let parts = |s: &str| -> Vec<i64> {
         if s.is_empty() {
@@ -441,7 +441,7 @@ Expected: PASS — 5 tests.
 
 ```bash
 git add crates/mlai-core/src/versioning.rs crates/mlai-core/src/lib.rs
-git commit -m "feat(mlai-core): add dotted-version comparison (ported from cinepipe-installer)"
+git commit -m "feat(mlai-core): add dotted-version comparison (ported from the source installer)"
 ```
 
 ---
@@ -457,7 +457,7 @@ git commit -m "feat(mlai-core): add dotted-version comparison (ported from cinep
 - Consumes: `mlai_core::versioning::compare_version` (Task 2).
 - Produces: `mlai_core::manifest::RemovalEntry { version: String, paths: Vec<String> }`, `Manifest.removals: Vec<RemovalEntry>` (new field, `#[serde(default)]`). `mlai_core::removals::{safe_target, apply_removals}`. `safe_target(install_root: &Path, rel: &str) -> Option<PathBuf>`. `apply_removals(removals: &[RemovalEntry], installed_version: Option<&str>, install_root: &Path, dry_run: bool) -> usize`.
 
-**Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/cleanup.rs`'s `safe_target` and `apply_removals` — verbatim algorithm, including the component-by-component path resolution that fixes a real prefix-confusion vulnerability present in their own PowerShell original (documented in that file's header comment). `RemovalEntry` generalized from their PascalCase JSON (`Version`/`Paths`) to this project's snake_case/TOML fields.
+**Ported from**: the source installer's `wizard/src-tauri/src/cleanup.rs`'s `safe_target` and `apply_removals` — verbatim algorithm, including the component-by-component path resolution that fixes a real prefix-confusion vulnerability present in their own PowerShell original (documented in that file's header comment). `RemovalEntry` generalized from their PascalCase JSON (`Version`/`Paths`) to this project's snake_case/TOML fields.
 
 - [x] **Step 1: Add `RemovalEntry` and the manifest field**
 
@@ -683,12 +683,11 @@ Prepend to the top of `crates/mlai-core/src/removals.rs`:
 // Guarded removals: apply per-manifest-version legacy cleanup and full
 // uninstall, with a path guard that resolves a manifest-supplied relative
 // path component-by-component so the result can never leave install_root's
-// own subtree. Ported from cinepipe-installer's cleanup.rs, which itself
-// documents and fixes a real prefix-confusion vulnerability present in an
-// earlier PowerShell implementation (a naive `path.starts_with(root)` check
-// incorrectly accepts a sibling directory like "CinePipeEvil" when root is
-// "CinePipe"). This construction-based guard is a stronger fix, not just a
-// different implementation of the same check.
+// own subtree. This fixes a real prefix-confusion vulnerability class: a
+// naive `path.starts_with(root)` check incorrectly accepts a sibling
+// directory like "MyAppEvil" when root is "MyApp". This construction-based
+// guard is a stronger fix, not just a different implementation of the same
+// check.
 
 use crate::manifest::RemovalEntry;
 use crate::versioning::compare_version;
@@ -786,7 +785,7 @@ Expected: PASS — 9 tests.
 
 ```bash
 git add crates/mlai-core/src/manifest.rs crates/mlai-core/src/removals.rs crates/mlai-core/src/lib.rs
-git commit -m "feat(mlai-core): add guarded removals (ported from cinepipe-installer, fixes their path-guard bug)"
+git commit -m "feat(mlai-core): add guarded removals (fixes a real path-guard bug)"
 ```
 
 ---
@@ -800,7 +799,7 @@ git commit -m "feat(mlai-core): add guarded removals (ported from cinepipe-insta
 - Consumes: `safe_target` (Task 3, same file).
 - Produces: `mlai_core::removals::{clean_install, remove_orphaned_components}`. `clean_install(component_names: &[String], install_root: &Path, dry_run: bool) -> usize`. `remove_orphaned_components(install_root: &Path, known_names: &[String], dry_run: bool) -> usize`.
 
-**Ported from**: cinepipe-installer `feat/unified-rust-installer:wizard/src-tauri/src/cleanup.rs`'s `clean_install`/`remove_orphaned_components` — verbatim algorithm, `.cinepipe-install`/`venv` reserved names generalized to `.mlai-install` (matching this project's existing state-directory name from Plan A) with `venv` kept as a second reserved name (a shared virtualenv directory is a plausible cross-component convention worth preserving, matching cinepipe's own).
+**Ported from**: the source installer's `wizard/src-tauri/src/cleanup.rs`'s `clean_install`/`remove_orphaned_components` — verbatim algorithm, its own equivalent state-directory reserved name generalized to `.mlai-install` (matching this project's existing state-directory name from Plan A) with `venv` kept as a second reserved name (a shared virtualenv directory is a plausible cross-component convention worth preserving, matching the source installer's own).
 
 - [x] **Step 1: Write the failing test**
 
@@ -1001,7 +1000,7 @@ Expected: PASS — all modules green.
 
 ```bash
 git add crates/mlai-core/src/removals.rs
-git commit -m "feat(mlai-core): add full uninstall + orphaned-component cleanup (ported from cinepipe-installer)"
+git commit -m "feat(mlai-core): add full uninstall + orphaned-component cleanup (ported from the source installer)"
 ```
 
 ---
@@ -1467,6 +1466,6 @@ Expected: PASS. Approximate total test count: `mlai-core` grows to ~48 (27 from 
 
 ## Self-Review Notes
 
-- **Spec coverage**: per-platform setup/health (the real gap found comparing against cinepipe-installer) and guarded removals/uninstall are both covered, ported closely from proven, tested source rather than re-derived. Repair mode and `mlai update` are explicitly out of scope (see "Out of scope" above), not gaps.
+- **Spec coverage**: per-platform setup/health (the real gap found comparing against a prior-art installer) and guarded removals/uninstall are both covered, ported closely from proven, tested source rather than re-derived. Repair mode and `mlai update` are explicitly out of scope (see "Out of scope" above), not gaps.
 - **Placeholder scan**: no TBD/TODO markers; every step has complete, runnable code, including every existing test/call site broken by Task 1's and Task 6's signature changes.
 - **Type consistency**: `PlatformSetup`/`PlatformHealth`/`PlatformFlag`, `RemovalEntry`, `compare_version`, `safe_target`/`apply_removals`/`clean_install`/`remove_orphaned_components`, and `install_component`'s new `(component, manifest, opts)` signature are each defined once and consumed identically everywhere they're used afterward.

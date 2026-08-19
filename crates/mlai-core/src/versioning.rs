@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 /// Dotted-version comparison ("1.2.0" vs "1.10.0", element-wise as integers,
 /// non-numeric segments treated as 0, the shorter side implicitly
-/// zero-padded). Ported from cinepipe-installer's `compare_version`.
+/// zero-padded).
 pub fn compare_version(a: &str, b: &str) -> Ordering {
     let parts = |s: &str| -> Vec<i64> {
         if s.is_empty() {
