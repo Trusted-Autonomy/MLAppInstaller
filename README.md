@@ -1,6 +1,6 @@
 # MLAppInstaller
 
-A generic, reusable, cross-platform installer foundation for agentic apps that need configurable local-vs-cloud model backends at install time. Architecture is confirmed — see [`docs/superpowers/specs/2026-08-14-foundation-design.md`](docs/superpowers/specs/2026-08-14-foundation-design.md) for the full design and [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) for the behavioral contract governing how this project is built.
+A generic, reusable, cross-platform installer foundation for agentic apps that need configurable local-vs-cloud model backends at install time. Architecture is confirmed — see [`docs/superpowers/specs/2026-08-14-foundation-design.md`](docs/superpowers/specs/2026-08-14-foundation-design.md) for the full design, [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) for the behavioral contract governing how this project is built, and [`docs/VERSIONING.md`](docs/VERSIONING.md) for the compatibility guarantees adopters can rely on.
 
 ## Origin / requirements captured 2026-08-14
 
