@@ -228,6 +228,8 @@ to:
 Run: `cd crates/mlai-gui && npm install && ./node_modules/.bin/tsc --noEmit`
 Expected: no output, exit code 0.
 
+> **Note (pending human action):** `tsc --noEmit` verifies types only, not runtime behavior. The final whole-branch review found and fixed a missing Tauri capability grant for `setTitle()` (see `crates/mlai-gui/src-tauri/capabilities/default.json`), which no automated check in this repo can exercise. A human should run `cd crates/mlai-gui && npm run tauri dev` once with a `manifest.toml` setting `[gui] app_name`, and confirm both the window retitles and the component list/install-progress log stream still render — this display-less agent sandbox cannot perform that check itself.
+
 - [x] **Step 10: Run the full workspace suite one more time and commit**
 
 Run: `cargo build --workspace && cargo test --workspace && cargo clippy --workspace --all-targets -- -D warnings && cargo fmt --all -- --check`
