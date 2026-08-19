@@ -213,11 +213,12 @@ manually. Building a distributable app from this GUI is what the
 distribution-packaging framework (`docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`)
 is for -- not covered here.
 
-### Theme (`[gui]` table)
+### Presentation (`[gui]` table)
 
 ```toml
 [gui]
 theme = "dark"
+app_name = "Example Studio Installer"
 ```
 
 - `theme` — `"system"` (default), `"light"`, or `"dark"`. `"system"` follows
@@ -225,6 +226,19 @@ theme = "dark"
   change. `"light"`/`"dark"` pin the GUI to that appearance regardless of
   the OS setting. This is adopter-configured in the distributed
   `manifest.toml` -- there is no in-app toggle for the end user.
+- `app_name` — optional. When set, the GUI retitles its window to this
+  string at startup. This is a runtime change applied from the manifest
+  each time the app launches, not a rebuild-time setting -- a stock
+  `mlai-gui` binary picks up whatever `app_name` the bundled
+  `manifest.toml` declares. When absent, the window keeps whatever title
+  is compiled into the app.
+
+`mlai package build` automatically bundles the distribution's
+`manifest.toml` as a packaged resource, so a stock `mlai-gui` binary
+built once can be reused across adopters: it reads the packaged
+`manifest.toml` at runtime for its component list, theme, and
+`app_name`, with no separate `mlai-gui` checkout or rebuild needed per
+adopter.
 
 ## Credentials
 
