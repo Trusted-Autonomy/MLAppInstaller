@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 
 interface Component {
@@ -21,6 +22,7 @@ interface Manifest {
   components: Component[];
   gui: {
     theme: "system" | "light" | "dark";
+    app_name: string | null;
   };
 }
 
@@ -128,6 +130,9 @@ async function loadComponents() {
     currentManifest = manifest;
     if (manifest.gui.theme !== "system") {
       document.documentElement.dataset.theme = manifest.gui.theme;
+    }
+    if (manifest.gui.app_name) {
+      await getCurrentWindow().setTitle(manifest.gui.app_name);
     }
     renderComponents(manifest);
     await refreshModelOptions();
