@@ -65,6 +65,17 @@ enum Commands {
         #[command(subcommand)]
         action: PackageAction,
     },
+    /// Bind a real project file to every installed component matching a project type
+    BindProject {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        install_root: PathBuf,
+        #[arg(long = "type")]
+        project_type: String,
+        #[arg(long)]
+        path: PathBuf,
+    },
     /// Guided wizard that writes a distribution profile for mlai package build
     Init {
         #[arg(long, default_value = "distribution-profile.toml")]
@@ -233,6 +244,12 @@ fn main() -> anyhow::Result<()> {
                 )
             }
         },
+        Commands::BindProject {
+            manifest,
+            install_root,
+            project_type,
+            path,
+        } => commands::bind_project::run(&manifest, &install_root, &project_type, &path),
         Commands::Init { output } => commands::init::run(&output),
     }
 }
