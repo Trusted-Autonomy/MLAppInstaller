@@ -27,7 +27,7 @@
 - Consumes: `mlai_package::profile::DistributionProfile` (existing — `Distribution.manifest: String`, already parsed, currently unused by `packager_config.rs`).
 - Produces: no new public function — `build_packager_config`'s existing signature (`profile: &DistributionProfile, target: &Target, binary_path: &str) -> String`) is unchanged; only its output JSON gains a `resources` key. `build.rs`'s `packager_command`/`build_package` call this unchanged, so Task 1 requires no `build.rs` edit.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-package/src/packager_config.rs`'s existing `#[cfg(test)] mod tests` block:
 
@@ -45,12 +45,12 @@ fn includes_the_distribution_manifest_as_a_resource() {
 
 (`sample_profile()`'s existing fixture already parses `manifest = "manifest.toml"` in its `[distribution]` table — no fixture change needed.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p mlai-package includes_the_distribution_manifest_as_a_resource`
 Expected: FAIL — `value["resources"]` is `Value::Null` (the key doesn't exist yet), not equal to the expected array.
 
-- [ ] **Step 3: Add the `resources` field**
+- [x] **Step 3: Add the `resources` field**
 
 In `crates/mlai-package/src/packager_config.rs`, add to the `PackagerConfig` struct (after `windows`):
 
@@ -65,17 +65,17 @@ In `build_packager_config`, add to the `PackagerConfig { ... }` literal:
         resources: vec![profile.distribution.manifest.clone()],
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cargo test -p mlai-package includes_the_distribution_manifest_as_a_resource`
 Expected: PASS.
 
-- [ ] **Step 5: Run the crate's full test suite (confirm no existing test broke)**
+- [x] **Step 5: Run the crate's full test suite (confirm no existing test broke)**
 
 Run: `cargo test -p mlai-package`
 Expected: all PASS — none of the existing tests in this file assert on the full JSON shape in a way `resources`'s addition would break (they assert on individual keys like `value["productName"]`, `value["macos"]["signingIdentity"]`, etc., not the whole object), but verify this rather than assume it.
 
-- [ ] **Step 6: Lint, format, and commit**
+- [x] **Step 6: Lint, format, and commit**
 
 Run: `cargo clippy -p mlai-package --all-targets -- -D warnings && cargo fmt --all -- --check`
 Expected: both clean.
@@ -97,7 +97,7 @@ git commit -m "feat(mlai-package): bundle the distribution's manifest.toml as a 
 - Consumes: nothing new from Task 1 (independent field addition to the same `GuiConfig` struct the theme feature already added).
 - Produces: `GuiConfig.app_name: Option<String>` (new field, JSON key `app_name`, consumed only by `mlai-gui`'s frontend — no other Rust code in this plan reads it). No other task depends on this.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `crates/mlai-core/src/manifest.rs`'s existing `#[cfg(test)] mod tests` block:
 
@@ -129,12 +129,12 @@ fn gui_app_name_defaults_to_none_when_absent() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p mlai-core gui_app_name_parses_when_present`
 Expected: FAIL — compile error, `GuiConfig` has no field `app_name`.
 
-- [ ] **Step 3: Add the field**
+- [x] **Step 3: Add the field**
 
 In `crates/mlai-core/src/manifest.rs`, add to `GuiConfig` (after `theme`):
 
@@ -143,17 +143,17 @@ In `crates/mlai-core/src/manifest.rs`, add to `GuiConfig` (after `theme`):
     pub app_name: Option<String>,
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p mlai-core gui_app_name_parses_when_present gui_app_name_defaults_to_none_when_absent`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full mlai-core suite (confirm existing `Manifest { ... }` fixtures still compile)**
+- [x] **Step 5: Run the full mlai-core suite (confirm existing `Manifest { ... }` fixtures still compile)**
 
 Run: `cargo test -p mlai-core`
 Expected: PASS — `app_name` is `Option<String>` inside `GuiConfig`, and every existing `Manifest { ... }` struct literal already constructs `gui: GuiConfig::default()` (added when the `theme` field landed), so `GuiConfig::default()` already covers the new field via `#[derive(Default)]` — no fixture updates needed this time, unlike the `theme` field's own introduction. Verify this is actually true by running the suite rather than assuming it.
 
-- [ ] **Step 6: Lint, format, and commit**
+- [x] **Step 6: Lint, format, and commit**
 
 Run: `cargo clippy -p mlai-core --all-targets -- -D warnings && cargo fmt --all -- --check`
 Expected: both clean.
@@ -163,7 +163,7 @@ git add crates/mlai-core/src/manifest.rs
 git commit -m "feat(mlai-core): add app_name to the [gui] manifest table"
 ```
 
-- [ ] **Step 7: Extend the frontend `Manifest` interface**
+- [x] **Step 7: Extend the frontend `Manifest` interface**
 
 In `crates/mlai-gui/src/main.ts`, change:
 
@@ -190,7 +190,7 @@ interface Manifest {
 }
 ```
 
-- [ ] **Step 8: Apply the retitle at startup**
+- [x] **Step 8: Apply the retitle at startup**
 
 In `crates/mlai-gui/src/main.ts`, add the import alongside the existing `@tauri-apps/api/core` and `@tauri-apps/api/event` imports:
 
@@ -223,12 +223,14 @@ to:
     renderComponents(manifest);
 ```
 
-- [ ] **Step 9: Type-check the frontend**
+- [x] **Step 9: Type-check the frontend**
 
 Run: `cd crates/mlai-gui && npm install && ./node_modules/.bin/tsc --noEmit`
 Expected: no output, exit code 0.
 
-- [ ] **Step 10: Run the full workspace suite one more time and commit**
+> **Note (pending human action):** `tsc --noEmit` verifies types only, not runtime behavior. The final whole-branch review found and fixed a missing Tauri capability grant for `setTitle()` (see `crates/mlai-gui/src-tauri/capabilities/default.json`), which no automated check in this repo can exercise. A human should run `cd crates/mlai-gui && npm run tauri dev` once with a `manifest.toml` setting `[gui] app_name`, and confirm both the window retitles and the component list/install-progress log stream still render — this display-less agent sandbox cannot perform that check itself.
+
+- [x] **Step 10: Run the full workspace suite one more time and commit**
 
 Run: `cargo build --workspace && cargo test --workspace && cargo clippy --workspace --all-targets -- -D warnings && cargo fmt --all -- --check`
 Expected: all clean (Task 1 and Task 2 touch disjoint files but this confirms they coexist).
@@ -238,7 +240,7 @@ git add crates/mlai-gui/src/main.ts
 git commit -m "feat(mlai-gui): retitle the window from manifest.toml's [gui] app_name"
 ```
 
-- [ ] **Step 11: Update `docs/USAGE.md`**
+- [x] **Step 11: Update `docs/USAGE.md`**
 
 Add to the existing "Theme (`[gui]` table)" section (from the theme feature) — rename/expand it to cover both fields, e.g. "Presentation (`[gui]` table)" — documenting `app_name`, that it's applied via a runtime window-title change (not a rebuild), and that `mlai package build` now automatically bundles the distribution's `manifest.toml` as a packaged resource so a stock `mlai-gui` binary picks up the adopter's real components/branding with no separate `mlai-gui` checkout needed.
 
@@ -247,7 +249,7 @@ git add docs/USAGE.md
 git commit -m "docs: document [gui] app_name and manifest-as-packaged-resource"
 ```
 
-- [ ] **Step 12: Mark this plan's checkboxes complete**
+- [x] **Step 12: Mark this plan's checkboxes complete**
 
 Update this file (`docs/superpowers/plans/2026-08-19-gui-whitelabel.md`), checking off every completed step, then commit:
 

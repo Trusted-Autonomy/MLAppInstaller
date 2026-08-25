@@ -14,6 +14,8 @@ pub struct Manifest {
 pub struct GuiConfig {
     #[serde(default)]
     pub theme: Theme,
+    #[serde(default)]
+    pub app_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
@@ -335,5 +337,31 @@ paths = ["hello-component/legacy_tool.py"]
         assert_eq!(serde_json::to_string(&Theme::System).unwrap(), "\"system\"");
         assert_eq!(serde_json::to_string(&Theme::Light).unwrap(), "\"light\"");
         assert_eq!(serde_json::to_string(&Theme::Dark).unwrap(), "\"dark\"");
+    }
+
+    #[test]
+    fn gui_app_name_parses_when_present() {
+        let toml = r#"
+        manifest_version = "1.0.0"
+
+        [[components]]
+        name = "hello-component"
+        source_url = "https://example.com/hello-component.zip"
+        ref = "main"
+
+        [gui]
+        app_name = "Example Studio Installer"
+    "#;
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(
+            manifest.gui.app_name.as_deref(),
+            Some("Example Studio Installer")
+        );
+    }
+
+    #[test]
+    fn gui_app_name_defaults_to_none_when_absent() {
+        let manifest = Manifest::parse(SAMPLE).unwrap();
+        assert_eq!(manifest.gui.app_name, None);
     }
 }
