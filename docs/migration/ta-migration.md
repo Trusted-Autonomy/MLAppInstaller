@@ -97,7 +97,7 @@ Proposed replacement text for the `v0.18.2` entry in `PLAN.md` (drop this in ver
 ### v0.18.2 — Adopt MLAppInstaller as the Cross-Platform Installer
 <!-- status: pending -->
 
-**Goal**: Adopt MLAppInstaller (github.com/michaelhunley/MLAppInstaller — an external
+**Goal**: Adopt MLAppInstaller (github.com/Trusted-Autonomy/MLAppInstaller — an external
 shared foundation, not a TA-internal crate) as TA's install/packaging engine instead of
 building a TA-only `ta-package`. Meridian and future plugin apps get cross-platform
 installer support from the same shared engine other adopting projects use, rather than TA
