@@ -1,4 +1,4 @@
-# GUI White-Labeling (No-Fork Distribution): Design
+# GUI Private-Labeling (No-Fork Distribution): Design
 
 **Status**: Approved 2026-08-19 (user directed the fix directly; mechanism verified empirically against the real `cargo-packager` 0.11.8 binary, not guessed).
 **Extends**: `docs/superpowers/specs/2026-08-15-distribution-packaging-framework-design.md`, `docs/superpowers/specs/2026-08-19-gui-theme-design.md`.

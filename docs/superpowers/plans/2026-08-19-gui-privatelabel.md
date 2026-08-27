@@ -1,4 +1,4 @@
-# GUI White-Labeling (No-Fork Distribution) Implementation Plan
+# GUI Private-Labeling (No-Fork Distribution) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 - Every step's exit criteria: `cargo build --workspace`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` must all pass before commit (per `CLAUDE.md`).
 - Every existing manifest (no `app_name` in `[gui]`) must behave identically to before this change — the window keeps whatever title `mlai-gui`'s own compiled-in `tauri.conf.json` provides.
 - Every existing `DistributionProfile` (already has `distribution.manifest` — this plan doesn't add a new profile field) must produce the same packager invocation shape as before, plus the new `resources` entry.
-- Design reference: `docs/superpowers/specs/2026-08-19-gui-whitelabel-design.md`.
+- Design reference: `docs/superpowers/specs/2026-08-19-gui-privatelabel-design.md`.
 - Grounding note: verified directly against the current contents of `crates/mlai-package/src/{packager_config,build,profile}.rs`, `crates/mlai-core/src/manifest.rs`, `crates/mlai-gui/src/main.ts`, and against the real locally-installed `cargo-packager` 0.11.8 binary (a `resources` config field was tested empirically, not assumed) on 2026-08-19.
 
 ---
@@ -251,9 +251,9 @@ git commit -m "docs: document [gui] app_name and manifest-as-packaged-resource"
 
 - [x] **Step 12: Mark this plan's checkboxes complete**
 
-Update this file (`docs/superpowers/plans/2026-08-19-gui-whitelabel.md`), checking off every completed step, then commit:
+Update this file (`docs/superpowers/plans/2026-08-19-gui-privatelabel.md`), checking off every completed step, then commit:
 
 ```bash
-git add docs/superpowers/plans/2026-08-19-gui-whitelabel.md
-git commit -m "docs: mark gui-whitelabel plan complete"
+git add docs/superpowers/plans/2026-08-19-gui-privatelabel.md
+git commit -m "docs: mark gui-privatelabel plan complete"
 ```
