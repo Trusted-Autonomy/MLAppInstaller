@@ -79,6 +79,8 @@ requires_os = ["windows"]
 - The GUI (`mlai-gui`) is almost certainly not relevant to TA — it's an end-customer install-wizard shape (checkbox components, install-root picker), and TA is a CLI-first tool for developers who are comfortable with `install.sh`. Adopting the engine doesn't obligate adopting the GUI.
 - `ta-package`'s actual scope in `PLAN.md` (`ReleaseAsset`, `InstallerConfig`, archive/checksum helpers, platform-detection) — some of this is genuinely `mlai-package`'s job once it exists; some (anything specific to TA's own release-asset naming/versioning conventions) stays TA's.
 
+See `docs/migration/configuration-depot-architecture.md` for the concrete mechanics of how TA's repo pulls in MLAppInstaller (pinned binary vs. building from source) and a readiness checklist.
+
 ## Phased plan
 
 1. **Now**: author `manifest.toml` wrapping TA's existing `install.sh`/`install_local.sh` logic as setup commands (near-zero risk — `mlai` orchestrates, doesn't replace, TA's own scripts keep running exactly as they do today).

@@ -47,6 +47,8 @@ notes = "recommended baseline"
 
 **Licensing/activation.** Whatever your product's own licensing or activation-gating model is, that stays entirely your own product's concern — MLAppInstaller has no opinion on it and shouldn't. It only handles *how the installer's bytes get packaged and published*, never *whether the installed product then requires a license*.
 
+See `docs/migration/configuration-depot-architecture.md` for the concrete mechanics of pulling in MLAppInstaller as a "configuration depot" dependency (pinned CLI binary vs. building the GUI from source) and access-grant instructions if your team needs direct push access rather than fork-based PRs.
+
 ## Phased plan
 
 1. Convert your existing manifest format to `manifest.toml` against MLAppInstaller's schema; retire any legacy hand-synced config twins in the same pass.
