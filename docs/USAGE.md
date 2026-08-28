@@ -1,5 +1,13 @@
 # Using MLAppInstaller
 
+## Sample distribution
+
+This repo's own root `manifest.toml` (the file every example below points
+at, and what `mlai-gui` reads in dev mode) is a real, working sample, not a
+placeholder — see [`samples/README.md`](../samples/README.md) for what it
+demonstrates (install/repair, per-machine model selection via the model
+catalog, project binding, private-labeling) and how to try it end to end.
+
 ## Installing components
 
 `mlai install` reads a TOML manifest and installs every component marked
