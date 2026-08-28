@@ -1,0 +1,25 @@
+# Model catalog fragment owned by "trusted-autonomy" -- real data taken from
+# TA's own v0.18.3 (voice-transcription plugin) migration example, documented
+# in docs/migration/ta-migration.md. Demonstrates vendor/OS-constrained tiers,
+# not just a VRAM cutoff: Apple Silicon and Windows both get a tier with no
+# VRAM requirement at all (a CPU/NPU-backed model), while the NVIDIA tier
+# requires actual VRAM headroom.
+
+[purposes.voice-transcription]
+owner = "trusted-autonomy"
+
+[[purposes.voice-transcription.tiers]]
+min_vram_gb = 0
+model = "parakeet-mlx"
+requires_vendor = ["apple"]
+requires_os = ["macos"]
+
+[[purposes.voice-transcription.tiers]]
+min_vram_gb = 4
+model = "parakeet-tdt-1.1b-v2"
+requires_vendor = ["nvidia"]
+
+[[purposes.voice-transcription.tiers]]
+min_vram_gb = 0
+model = "faster-whisper-medium"
+requires_os = ["windows"]

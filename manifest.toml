@@ -1,7 +1,51 @@
 manifest_version = "1.0.0"
 
+[gui]
+theme = "system"
+app_name = "MLAppInstaller (Sample)"
+
 [[components]]
-name = "hello-component"
-source_url = "https://example.com/hello-component.zip"
+name = "sample-transcription-app"
+source_url = "https://github.com/Trusted-Autonomy/MLAppInstaller/releases/download/samples-v1/sample-transcription-app.zip"
 ref = "main"
 default = true
+supports_options_protocol = { posix = true, windows = true }
+
+[components.setup.posix]
+command = "sh"
+args = ["setup.sh"]
+
+[components.setup.windows]
+command = "powershell"
+args = ["-File", "setup.ps1"]
+
+[components.health.posix]
+type = "file_exists"
+path = "marker.txt"
+
+[components.health.windows]
+type = "file_exists"
+path = "marker.txt"
+
+[[components]]
+name = "sample-ue5-plugin"
+source_url = "https://github.com/Trusted-Autonomy/MLAppInstaller/releases/download/samples-v1/sample-ue5-plugin.zip"
+ref = "main"
+default = true
+binds_to_project_type = "UE5"
+
+[components.setup.posix]
+command = "sh"
+args = ["setup.sh", "-Project", "{project}"]
+
+[components.setup.windows]
+command = "powershell"
+args = ["-File", "setup.ps1", "-Project", "{project}"]
+
+[components.health.posix]
+type = "file_exists"
+path = "marker.txt"
+
+[components.health.windows]
+type = "file_exists"
+path = "marker.txt"
