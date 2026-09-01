@@ -1,7 +1,7 @@
 # Migrating TrustedAutonomy onto MLAppInstaller
 
 **Audience**: the TA team, deciding what to actually do with `v0.18.2` (`Extract ta-package + Cross-Platform Installer`).
-**Status**: handoff document, not an MLAppInstaller implementation plan — nothing here executes automatically. Originally written 2026-08-16, updated 2026-08-19 against MLAppInstaller's current state (`mlai-core`, `mlai-cli`, `mlai-credentials`, `mlai-gui`, `mlai-package`, model catalog — see `docs/superpowers/specs/2026-08-14-foundation-design.md` for the full architecture).
+**Status**: handoff document, not an MLAppInstaller implementation plan — nothing here executes automatically. Originally written 2026-08-16, updated 2026-08-19 against MLAppInstaller's current state (`mlai-core`, `mlai-cli`, `mlai-credentials`, `mlai-gui`, `mlai-package`, model catalog — see `docs/superpowers/specs/2026-08-14-foundation-design.md` for the full architecture). **Updated 2026-09-01**: TA will adopt `mlai-gui` as its installer too, not CLI-only as originally scoped — see the updated "What migrates directly" and phased plan below.
 
 ## Bottom line
 
@@ -68,6 +68,8 @@ requires_os = ["windows"]
 
 `ta vtt install`'s existing platform-detection logic (already hand-written per `PLAN.md`) becomes a call to `mlai catalog resolve --purpose voice-transcription --catalog ta-catalog.toml --os <detected> --gpu-vendor <detected> ...` instead of hardcoded if/else branches — same behavior, now data instead of code, and automatically consistent if a second TA feature ever needs the same kind of decision.
 
+**The GUI (`mlai-gui`).** Originally scoped out of this doc ("TA is CLI-first"), but TA will ship the GUI installer too, not `install.sh` alone. TA gets it the same way any adopter does — no fork, no `crates/mlai-gui` checkout: build `mlai-gui` from source at a pinned tag, then package it via `mlai package build` against a TA-owned `distribution-profile.toml`, per `docs/migration/configuration-depot-architecture.md`'s GUI packaging steps. Whether that profile private-labels the wizard (real branding/icons) or ships the default/unbranded theme is still an open decision for the TA team — see phased-plan step 4 below.
+
 ## What requires real changes, not just translation
 
 **`ta-credentials` stays exactly as-is — this is not a migration target.** It's easy to assume the wrong thing here given the history: `mlai-credentials` was originally *ported from* `ta-credentials`, then reverted from MLAppInstaller entirely (see `docs/CONSTITUTION.md` §2.1) because an install-time tool storing secrets is the wrong shape — but TA's own use case (a long-running daemon brokering scoped, revocable credentials to agent processes) is exactly what `ta-credentials` is for, and that need doesn't go away. **Nothing about adopting MLAppInstaller should touch `ta-credentials`.**
@@ -76,7 +78,6 @@ requires_os = ["windows"]
 
 ## What doesn't migrate
 
-- The GUI (`mlai-gui`) is almost certainly not relevant to TA — it's an end-customer install-wizard shape (checkbox components, install-root picker), and TA is a CLI-first tool for developers who are comfortable with `install.sh`. Adopting the engine doesn't obligate adopting the GUI.
 - `ta-package`'s actual scope in `PLAN.md` (`ReleaseAsset`, `InstallerConfig`, archive/checksum helpers, platform-detection) — some of this is genuinely `mlai-package`'s job once it exists; some (anything specific to TA's own release-asset naming/versioning conventions) stays TA's.
 
 See `docs/migration/configuration-depot-architecture.md` for the concrete mechanics of how TA's repo pulls in MLAppInstaller (pinned binary vs. building from source) and a readiness checklist.
@@ -87,7 +88,8 @@ See `docs/migration/configuration-depot-architecture.md` for the concrete mechan
 2. **Now**: add Windows setup support via `[components.setup.windows]`, closing the gap `install.sh` currently punts to WSL2/winget.
 3. **Now**: convert `v0.18.3`'s hand-written platform/model logic into a `ta`-owned model catalog fragment; swap `ta vtt install`'s detection branches for `mlai catalog resolve` calls.
 4. **Now**: author a distribution profile for signed, native installers via `mlai init`, then `mlai package build`/`mlai package deploy` — replacing the packaging half of `v0.18.2` for real. No longer blocked on upstream work.
-5. **Update `PLAN.md`**: close `v0.18.2` as superseded; if the team wants a paper trail, `v0.18.2`'s items map to steps 1, 2, and 4 above, not a from-scratch build.
+5. **Now**: decide branding scope for the GUI (private-labeled with real TA branding/icons, or the default/unbranded theme), then build `mlai-gui` from source at the pinned tag and package it against the same distribution profile — TA's install-wizard becomes this binary instead of `install.sh` alone.
+6. **Update `PLAN.md`**: close `v0.18.2` as superseded; if the team wants a paper trail, `v0.18.2`'s items map to steps 1, 2, 4, and 5 above, not a from-scratch build.
 
 ## Where this slots into `PLAN.md`
 
@@ -125,13 +127,20 @@ reimplementing packaging logic independently. See MLAppInstaller's
    `mlai package deploy` for signed Windows/Mac/Linux installers. This replaces the
    original scope's `ta-package` extraction, GH Actions template, and code-signing
    stubs items.
-5. [ ] **Meridian CI integration**: point Meridian's release workflow at the adopted
-   MLAppInstaller distribution profile instead of a TA-internal packaging template.
-6. [ ] **Tests**: real end-to-end `mlai install`/`mlai repair` against TA's own manifest,
+5. [ ] **GUI installer**: TA ships `mlai-gui` as its install wizard, not `install.sh`
+   alone. Decide branding scope (private-labeled with real TA branding/icons, or the
+   default/unbranded theme) first, then build `mlai-gui` from source at the pinned tag
+   and package it against the same distribution profile from step 4, per
+   MLAppInstaller's `docs/migration/configuration-depot-architecture.md`.
+6. [ ] **Meridian CI integration**: point Meridian's release workflow at the adopted
+   MLAppInstaller distribution profile instead of a TA-internal packaging template —
+   covering both the `mlai` CLI binary and the packaged `mlai-gui` installer.
+7. [ ] **Tests**: real end-to-end `mlai install`/`mlai repair` against TA's own manifest,
    on all three platforms (MLAppInstaller's own CI already proves the underlying engine
-   works cross-platform — this item verifies TA's specific manifest/setup scripts do too).
-7. [ ] **USAGE.md**: how Meridian and future plugin apps adopt MLAppInstaller as their
-   installer.
+   works cross-platform — this item verifies TA's specific manifest/setup scripts do too),
+   plus a smoke test of the packaged `mlai-gui` installer on each platform.
+8. [ ] **USAGE.md**: how Meridian and future plugin apps adopt MLAppInstaller as their
+   installer, CLI and GUI both.
 
 #### Version: `0.18.2-alpha`
 ```

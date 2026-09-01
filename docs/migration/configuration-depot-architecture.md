@@ -48,8 +48,8 @@ This is a `git clone` of MLAppInstaller at a pinned tag, not a fork — the depo
 |---|---|---|
 | Manifest conversion | Not started — `docs/migration/ta-migration.md` phased plan, step 1 | Not started — `docs/migration/adopter-migration-guide.md` phased plan, step 1 |
 | Model catalog fragment | `ta-migration.md`'s worked example is real, ready to convert directly (already used verbatim in `samples/catalog/trusted-autonomy.toml`) | Depends on the adopter's actual `model-catalog.json` — not converted yet |
-| GUI relevance | Probably not needed — TA is CLI-first (`ta-migration.md`, "What doesn't migrate") | Needed — this is the whole reason private-labeling/icons exist |
-| Branding | N/A (no GUI) | Brand kit available (`CinePipeAi_Brand_Kit_One_Pager_v3_Checked.pdf` — colors, wordmark, type system). **Do not commit any of this to MLAppInstaller's own repo** — it's public now; branding lives entirely in CinePipe-installer's own (private) depot repo's `distribution-profile.toml`/icon files. |
+| GUI relevance | Needed as of 2026-09-01 — TA will ship `mlai-gui` as its install wizard alongside `install.sh`, not CLI-only (see `ta-migration.md`) | Needed — this is the whole reason private-labeling/icons exist |
+| Branding | TBD — TA hasn't decided between a real private-labeled build (own branding/icons) or shipping the default/unbranded theme; either is supported today | Brand kit available (`CinePipeAi_Brand_Kit_One_Pager_v3_Checked.pdf` — colors, wordmark, type system). **Do not commit any of this to MLAppInstaller's own repo** — it's public now; branding lives entirely in CinePipe-installer's own (private) depot repo's `distribution-profile.toml`/icon files. |
 | Icon support | N/A | In progress as of 2026-08-28 — check whether `docs/superpowers/plans/2026-08-28-package-icons.md` is merged before relying on the `icons` field |
 | Signing identity | Existing Windows cert + signing scripts (`scripts/sign-windows.ps1`) — convert to a `certificate_thumbprint` reference | Existing Windows/macOS certs per the (removed, CinePipe-specific) migration doc's original content — get the actual values from the CinePipe team directly, not from this repo |
 
