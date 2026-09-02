@@ -14,7 +14,7 @@ If your project already has a working, in-house installer — even a rough one, 
 | A "don't let cleanup delete outside the install root" path guard | `mlai_core::removals::safe_target` |
 | Versioned removal/cleanup-on-upgrade logic | `mlai_core::removals::{apply_removals, clean_install, remove_orphaned_components}` |
 | Version-comparison logic for upgrade decisions | `mlai_core::versioning::compare_version` |
-| Per-platform setup/health scripts (Windows vs. POSIX twins) | `mlai_core::manifest::{PlatformSetup, PlatformHealth, Component::setup_for_current_os()}` — same `windows`/`posix` split, selected via `cfg!(target_os)` |
+| Per-platform setup/health scripts (Windows vs. POSIX twins) | `mlai_core::manifest::{PlatformSetup, PlatformHealth, Component::setup_for_current_os()}` — same `windows`/`posix` split, selected via `cfg!(target_os)`. A POSIX setup script that's exec'd directly (`command: "install/setup.sh"`, not `command: "sh"` with the script as an `arg`) gets its executable bit restored automatically after unpack — GitHub's `codeload.github.com` zipballs never carry Unix permission bits for any file, so if your existing installer does its own `chmod +x` before invoking a setup script (as `install.sh` commonly does), that step is now redundant, not required, once converted. |
 | A GUI wizard's component-selection/install-status frontend | `crates/mlai-gui/src/main.ts` as a starting point to re-skin, not rebuild from scratch |
 | A "pass through backend-specific config without the installer understanding it" protocol | `mlai_core::options_protocol` (`--describe-options`/`--set key=value`) |
 | A "verify against real disk state, not just the recorded install log" repair path | `mlai_core::pipeline::repair_component` |
