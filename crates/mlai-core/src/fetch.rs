@@ -25,19 +25,43 @@ pub enum FetchError {
 
 pub trait Fetcher {
     fn fetch(&self, url: &str, dest_zip: &Path) -> Result<(), FetchError>;
+
+    /// Best-effort identity for the content currently at `url` (an HTTP
+    /// `ETag` or `Last-Modified` value), obtained without downloading it.
+    /// Lets the pipeline detect that a mutable ref (a branch tip, unlike a
+    /// pinned release tag) changed since the last install without trusting
+    /// a static `ref` string as if it were a version. Returns `None` when
+    /// the server exposes neither header, doesn't support the lookup, or is
+    /// unreachable — callers fall back to the manifest's declared version in
+    /// that case, so this never fails the install outright.
+    fn remote_identity(&self, _url: &str) -> Option<String> {
+        None
+    }
 }
 
 pub struct HttpFetcher {
     pub token: Option<String>,
 }
 
-impl Fetcher for HttpFetcher {
-    fn fetch(&self, url: &str, dest_zip: &Path) -> Result<(), FetchError> {
-        let client = reqwest::blocking::Client::new();
-        let mut request = client.get(url);
+impl HttpFetcher {
+    fn authed_request(
+        &self,
+        client: &reqwest::blocking::Client,
+        method: reqwest::Method,
+        url: &str,
+    ) -> reqwest::blocking::RequestBuilder {
+        let mut request = client.request(method, url);
         if let Some(token) = &self.token {
             request = request.bearer_auth(token);
         }
+        request
+    }
+}
+
+impl Fetcher for HttpFetcher {
+    fn fetch(&self, url: &str, dest_zip: &Path) -> Result<(), FetchError> {
+        let client = reqwest::blocking::Client::new();
+        let request = self.authed_request(&client, reqwest::Method::GET, url);
         let response = request.send().map_err(|source| FetchError::Http {
             url: url.to_string(),
             source,
@@ -62,6 +86,23 @@ impl Fetcher for HttpFetcher {
             path: dest_zip.to_path_buf(),
             source,
         })
+    }
+
+    fn remote_identity(&self, url: &str) -> Option<String> {
+        let client = reqwest::blocking::Client::new();
+        let response = self
+            .authed_request(&client, reqwest::Method::HEAD, url)
+            .send()
+            .ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        response
+            .headers()
+            .get(reqwest::header::ETAG)
+            .or_else(|| response.headers().get(reqwest::header::LAST_MODIFIED))
+            .and_then(|value| value.to_str().ok())
+            .map(|value| value.to_string())
     }
 }
 
@@ -154,6 +195,73 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(err, FetchError::Status { status: 404, .. }));
+    }
+
+    #[test]
+    fn remote_identity_returns_the_etag_when_present() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("HEAD", "/bundle.zip")
+            .with_status(200)
+            .with_header("etag", "\"abc123\"")
+            .create();
+
+        let fetcher = HttpFetcher { token: None };
+        let identity = fetcher.remote_identity(&format!("{}/bundle.zip", server.url()));
+
+        assert_eq!(identity.as_deref(), Some("\"abc123\""));
+    }
+
+    #[test]
+    fn remote_identity_falls_back_to_last_modified_when_no_etag() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("HEAD", "/bundle.zip")
+            .with_status(200)
+            .with_header("last-modified", "Tue, 01 Sep 2026 00:00:00 GMT")
+            .create();
+
+        let fetcher = HttpFetcher { token: None };
+        let identity = fetcher.remote_identity(&format!("{}/bundle.zip", server.url()));
+
+        assert_eq!(identity.as_deref(), Some("Tue, 01 Sep 2026 00:00:00 GMT"));
+    }
+
+    #[test]
+    fn remote_identity_is_none_when_server_exposes_neither_header() {
+        let mut server = mockito::Server::new();
+        let _mock = server.mock("HEAD", "/bundle.zip").with_status(200).create();
+
+        let fetcher = HttpFetcher { token: None };
+        let identity = fetcher.remote_identity(&format!("{}/bundle.zip", server.url()));
+
+        assert_eq!(identity, None);
+    }
+
+    #[test]
+    fn remote_identity_is_none_on_non_success_status() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("HEAD", "/missing.zip")
+            .with_status(404)
+            .with_header("etag", "\"abc123\"")
+            .create();
+
+        let fetcher = HttpFetcher { token: None };
+        let identity = fetcher.remote_identity(&format!("{}/missing.zip", server.url()));
+
+        assert_eq!(identity, None);
+    }
+
+    #[test]
+    fn default_remote_identity_is_none() {
+        struct NoOpFetcher;
+        impl Fetcher for NoOpFetcher {
+            fn fetch(&self, _url: &str, _dest_zip: &Path) -> Result<(), FetchError> {
+                Ok(())
+            }
+        }
+        assert_eq!(NoOpFetcher.remote_identity("https://example.com"), None);
     }
 
     fn build_fixture_zip(path: &Path) {
