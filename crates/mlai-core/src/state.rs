@@ -10,6 +10,11 @@ pub enum ComponentState {
     SetupRun,
     Healthy,
     NeedsAttention,
+    /// Unpacked but deliberately left without its setup command run: the
+    /// component declares `binds_to_project_type` and no project has been
+    /// bound to it yet, so its setup args still contain an unsubstituted
+    /// `{project}` placeholder. Resolved by `pipeline::bind_project`.
+    AwaitingProjectBinding,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -19,6 +24,12 @@ pub struct ComponentRecord {
     pub component_ref: String,
     pub state: ComponentState,
     pub installed_at: String,
+    /// Every project path this component has been bound to via
+    /// `pipeline::bind_project`, e.g. a UE5 component bound to more than one
+    /// `.uproject` on the same machine. `#[serde(default)]` so an
+    /// `installed.json` written before this field existed still parses.
+    #[serde(default)]
+    pub bound_projects: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -107,12 +118,34 @@ mod tests {
                 component_ref: "main".into(),
                 state: ComponentState::Healthy,
                 installed_at: "2026-08-14T00:00:00Z".into(),
+                bound_projects: Vec::new(),
             },
         );
         state.save(dir.path()).unwrap();
 
         let loaded = InstalledState::load(dir.path()).unwrap();
         assert_eq!(loaded, state);
+    }
+
+    #[test]
+    fn component_record_without_bound_projects_field_still_parses() {
+        // installed.json written before bound_projects existed.
+        let json = r#"{
+            "manifest_version": "1.0.0",
+            "components": {
+                "hello-component": {
+                    "version": "abc123",
+                    "ref": "main",
+                    "state": "healthy",
+                    "installed_at": "2026-08-14T00:00:00Z"
+                }
+            }
+        }"#;
+        let state: InstalledState = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            state.components["hello-component"].bound_projects,
+            Vec::<String>::new()
+        );
     }
 
     #[test]
