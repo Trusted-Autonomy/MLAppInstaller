@@ -57,6 +57,10 @@ pub fn run(
             .with_context(|| format!("installing component '{}'", component.name))?;
         match result {
             ComponentState::Healthy => println!("  {} -> healthy", component.name),
+            ComponentState::AwaitingProjectBinding => println!(
+                "  {} -> installed, awaiting project binding (run `mlai bind-project`)",
+                component.name
+            ),
             other => println!("  {} -> {other:?} (NEEDS ATTENTION)", component.name),
         }
     }

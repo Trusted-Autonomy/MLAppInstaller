@@ -52,6 +52,7 @@ This is a `git clone` of MLAppInstaller at a pinned tag, not a fork — the depo
 | Branding | N/A (no GUI) | Brand kit available (`CinePipeAi_Brand_Kit_One_Pager_v3_Checked.pdf` — colors, wordmark, type system). **Do not commit any of this to MLAppInstaller's own repo** — it's public now; branding lives entirely in CinePipe-installer's own (private) depot repo's `distribution-profile.toml`/icon files. |
 | Icon support | N/A | In progress as of 2026-08-28 — check whether `docs/superpowers/plans/2026-08-28-package-icons.md` is merged before relying on the `icons` field |
 | Signing identity | Existing Windows cert + signing scripts (`scripts/sign-windows.ps1`) — convert to a `certificate_thumbprint` reference | Existing Windows/macOS certs per the (removed, CinePipe-specific) migration doc's original content — get the actual values from the CinePipe team directly, not from this repo |
+| Engine gaps (mutable-ref version tracking / project-binding-until-bound / multi-project persistence) | Fixed upstream 2026-09-02 — benefits TA too, since `ta-migration.md`'s own worked manifest example uses `ref = "latest"` | Fixed upstream 2026-09-02, found via reviewing `feat/unified-rust-installer`'s real source against `mlai-core` — see `docs/migration/adopter-migration-guide.md`, "Engine gaps found and fixed" |
 
 ## Granting CinePipeAi access
 

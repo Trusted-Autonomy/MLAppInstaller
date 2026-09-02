@@ -39,16 +39,34 @@ pub fn install_component(
     opts: &PipelineOptions,
 ) -> Result<ComponentState, PipelineError> {
     let mut state = apply_removals_and_persist_manifest_version(manifest, opts)?;
+    let effective_version = resolve_effective_version(component, opts);
 
     if !opts.force {
         if let Some(existing) = state.components.get(&component.name) {
-            if existing.version == opts.version && existing.state == ComponentState::Healthy {
-                return Ok(ComponentState::Healthy);
+            let already_settled = matches!(
+                existing.state,
+                ComponentState::Healthy | ComponentState::AwaitingProjectBinding
+            );
+            if existing.version == effective_version && already_settled {
+                return Ok(existing.state);
             }
         }
     }
 
-    run_install_sequence(component, &mut state, opts)
+    run_install_sequence(component, &mut state, opts, &effective_version)
+}
+
+/// The version to record for this install: a fresh HTTP `ETag`/`Last-Modified`
+/// identity for `component.source_url` when the fetcher can supply one, or
+/// `opts.version` (typically the manifest's `ref` string) otherwise. Without
+/// this, a component pinned to a mutable ref like `ref = "main"` would record
+/// the literal string `"main"` as its version forever — indistinguishable
+/// from an actual pinned tag — so a real upstream change on that branch would
+/// never be detected as needing a reinstall.
+fn resolve_effective_version(component: &Component, opts: &PipelineOptions) -> String {
+    opts.fetcher
+        .remote_identity(&component.source_url)
+        .unwrap_or_else(|| opts.version.clone())
 }
 
 /// Re-verifies a component's health directly against disk, ignoring any
@@ -73,13 +91,21 @@ pub fn repair_component(
         return Ok((ComponentState::Healthy, false));
     }
 
-    run_install_sequence(component, &mut state, opts).map(|final_state| (final_state, true))
+    let effective_version = resolve_effective_version(component, opts);
+    run_install_sequence(component, &mut state, opts, &effective_version)
+        .map(|final_state| (final_state, true))
 }
 
 /// Finds every already-installed component matching `project_type`,
 /// substitutes `project_path` for a `{project}` placeholder in its setup
 /// command args, and force-reinstalls it: untagged components and
 /// tagged-but-not-yet-installed components are left completely untouched.
+/// A component can be bound to more than one project this way — each
+/// successful bind is appended to that component's `bound_projects` record
+/// (deduplicated, not replaced), so binding a second project doesn't erase
+/// the first one from `installed.json`. The component's own files still
+/// reflect only the most recently bound project, since setup itself is
+/// force-reinstalled against a single project path each call.
 pub fn bind_project(
     manifest: &crate::manifest::Manifest,
     install_root: &Path,
@@ -90,7 +116,7 @@ pub fn bind_project(
     let installed = InstalledState::load(install_root).unwrap_or_default();
     let project_str = project_path.to_string_lossy().to_string();
 
-    manifest
+    let results: Vec<(String, Result<ComponentState, PipelineError>)> = manifest
         .components
         .iter()
         .filter(|c| c.binds_to_project_type.as_deref() == Some(project_type))
@@ -120,7 +146,28 @@ pub fn bind_project(
             let result = install_component(&bound, manifest, &opts);
             (component.name.clone(), result)
         })
-        .collect()
+        .collect();
+
+    if let Ok(mut state) = InstalledState::load(install_root) {
+        let mut changed = false;
+        for (name, result) in &results {
+            if result.is_err() {
+                continue;
+            }
+            if let Some(record) = state.components.get_mut(name) {
+                if !record.bound_projects.iter().any(|p| p == &project_str) {
+                    record.bound_projects.push(project_str.clone());
+                    record.bound_projects.sort();
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            let _ = state.save(install_root);
+        }
+    }
+
+    results
 }
 
 fn apply_removals_and_persist_manifest_version(
@@ -146,10 +193,23 @@ fn apply_removals_and_persist_manifest_version(
     Ok(state)
 }
 
+/// True when `component` declares `binds_to_project_type` and its current-OS
+/// setup command still has a literal, unsubstituted `{project}` placeholder —
+/// i.e. no project has been bound to it yet via `bind_project`. Running such
+/// a setup command as-is would hand the component's own script the string
+/// `"{project}"` instead of a real path.
+fn awaiting_project_binding(component: &Component) -> bool {
+    component.binds_to_project_type.is_some()
+        && component
+            .setup_for_current_os()
+            .is_some_and(|setup| setup.args.iter().any(|arg| arg == "{project}"))
+}
+
 fn run_install_sequence(
     component: &Component,
     state: &mut InstalledState,
     opts: &PipelineOptions,
+    effective_version: &str,
 ) -> Result<ComponentState, PipelineError> {
     let existing_version = state
         .components
@@ -158,7 +218,7 @@ fn run_install_sequence(
 
     let component_dir = opts.install_root.join(&component.name);
     if component_dir.exists() {
-        let backup_label = existing_version.as_deref().unwrap_or(&opts.version);
+        let backup_label = existing_version.as_deref().unwrap_or(effective_version);
         backup_component(&opts.install_root, &component.name, backup_label)?;
         crate::backup::prune_backups(&opts.install_root, opts.backup_keep)?;
     }
@@ -169,21 +229,50 @@ fn run_install_sequence(
         .join("downloads")
         .join(format!("{}.zip", component.name));
     opts.fetcher.fetch(&component.source_url, &zip_path)?;
-    record_state(state, opts, component, ComponentState::Downloaded)?;
+    record_state(
+        state,
+        opts,
+        effective_version,
+        component,
+        ComponentState::Downloaded,
+    )?;
 
     let component_dir = unpack_zip(&zip_path, &opts.install_root, &component.name)?;
-    record_state(state, opts, component, ComponentState::Unpacked)?;
+    record_state(
+        state,
+        opts,
+        effective_version,
+        component,
+        ComponentState::Unpacked,
+    )?;
+
+    if awaiting_project_binding(component) {
+        record_state(
+            state,
+            opts,
+            effective_version,
+            component,
+            ComponentState::AwaitingProjectBinding,
+        )?;
+        return Ok(ComponentState::AwaitingProjectBinding);
+    }
 
     if let Some(setup) = component.setup_for_current_os() {
         run_setup(&component_dir, setup, &opts.set_options)?;
     }
-    record_state(state, opts, component, ComponentState::SetupRun)?;
+    record_state(
+        state,
+        opts,
+        effective_version,
+        component,
+        ComponentState::SetupRun,
+    )?;
 
     let final_state = match check_health(&component_dir, component.health_for_current_os()) {
         HealthStatus::Healthy => ComponentState::Healthy,
         HealthStatus::NeedsAttention(_) => ComponentState::NeedsAttention,
     };
-    record_state(state, opts, component, final_state)?;
+    record_state(state, opts, effective_version, component, final_state)?;
 
     Ok(final_state)
 }
@@ -191,16 +280,23 @@ fn run_install_sequence(
 fn record_state(
     state: &mut InstalledState,
     opts: &PipelineOptions,
+    effective_version: &str,
     component: &Component,
     component_state: ComponentState,
 ) -> Result<(), PipelineError> {
+    let bound_projects = state
+        .components
+        .get(&component.name)
+        .map(|r| r.bound_projects.clone())
+        .unwrap_or_default();
     state.components.insert(
         component.name.clone(),
         ComponentRecord {
-            version: opts.version.clone(),
+            version: effective_version.to_string(),
             component_ref: component.component_ref.clone(),
             state: component_state,
             installed_at: chrono::Utc::now().to_rfc3339(),
+            bound_projects,
         },
     );
     state.save(&opts.install_root)?;
@@ -824,6 +920,296 @@ mod tests {
         assert!(
             !argv.contains("{project}"),
             "the literal placeholder must not survive into the real setup invocation: {argv}"
+        );
+    }
+
+    fn ue5_plugin_component() -> Component {
+        Component {
+            name: "ue5-plugin".into(),
+            source_url: "https://example.com/ue5-plugin.zip".into(),
+            component_ref: "main".into(),
+            default: true,
+            setup: PlatformSetup {
+                windows: None,
+                posix: Some(SetupCommand {
+                    command: "sh".into(),
+                    args: vec!["setup.sh".into(), "-Project".into(), "{project}".into()],
+                }),
+            },
+            health: PlatformHealth {
+                windows: None,
+                posix: Some(HealthCheck::FileExists {
+                    path: "marker.txt".into(),
+                }),
+            },
+            supports_options_protocol: PlatformFlag::default(),
+            binds_to_project_type: Some("UE5".into()),
+        }
+    }
+
+    #[test]
+    fn fresh_install_of_an_unbound_project_binding_component_skips_setup() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_with_project_placeholder(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let ue5 = ue5_plugin_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![ue5.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        let result = install_component(&ue5, &manifest, &opts).unwrap();
+
+        assert_eq!(result, ComponentState::AwaitingProjectBinding);
+        assert!(
+            !root.path().join("ue5-plugin").join("marker.txt").exists(),
+            "setup must not have run before a project is bound"
+        );
+        assert!(
+            !root.path().join("ue5-plugin").join("argv.txt").exists(),
+            "setup must not have run with an unsubstituted {{project}} placeholder"
+        );
+    }
+
+    #[test]
+    fn re_running_install_on_an_awaiting_binding_component_does_not_reinstall() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_with_project_placeholder(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let ue5 = ue5_plugin_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![ue5.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        install_component(&ue5, &manifest, &opts).unwrap();
+        let result = install_component(&ue5, &manifest, &opts).unwrap();
+
+        assert_eq!(result, ComponentState::AwaitingProjectBinding);
+    }
+
+    #[test]
+    fn bind_project_persists_multiple_bound_projects_without_losing_earlier_ones() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_with_project_placeholder(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let ue5 = ue5_plugin_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![ue5.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&ue5, &manifest, &opts).unwrap();
+
+        bind_project(
+            &manifest,
+            root.path(),
+            &fetcher,
+            "UE5",
+            Path::new("/fake/GameOne.uproject"),
+        );
+        bind_project(
+            &manifest,
+            root.path(),
+            &fetcher,
+            "UE5",
+            Path::new("/fake/GameTwo.uproject"),
+        );
+
+        let state = InstalledState::load(root.path()).unwrap();
+        let record = &state.components["ue5-plugin"];
+        assert_eq!(
+            record.bound_projects,
+            vec![
+                "/fake/GameOne.uproject".to_string(),
+                "/fake/GameTwo.uproject".to_string(),
+            ],
+            "binding a second project must not erase the first"
+        );
+    }
+
+    #[test]
+    fn bind_project_binding_the_same_project_twice_does_not_duplicate_it() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip_with_project_placeholder(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let ue5 = ue5_plugin_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![ue5.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+        install_component(&ue5, &manifest, &opts).unwrap();
+
+        for _ in 0..2 {
+            bind_project(
+                &manifest,
+                root.path(),
+                &fetcher,
+                "UE5",
+                Path::new("/fake/GameOne.uproject"),
+            );
+        }
+
+        let state = InstalledState::load(root.path()).unwrap();
+        assert_eq!(
+            state.components["ue5-plugin"].bound_projects,
+            vec!["/fake/GameOne.uproject".to_string()]
+        );
+    }
+
+    struct FixtureFetcherWithIdentity {
+        zip_path: PathBuf,
+        identity: std::cell::RefCell<String>,
+        fetch_count: std::cell::Cell<u32>,
+    }
+
+    impl Fetcher for FixtureFetcherWithIdentity {
+        fn fetch(&self, _url: &str, dest_zip: &Path) -> Result<(), crate::fetch::FetchError> {
+            self.fetch_count.set(self.fetch_count.get() + 1);
+            if let Some(parent) = dest_zip.parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::copy(&self.zip_path, dest_zip).unwrap();
+            Ok(())
+        }
+
+        fn remote_identity(&self, _url: &str) -> Option<String> {
+            Some(self.identity.borrow().clone())
+        }
+    }
+
+    #[test]
+    fn a_changed_remote_identity_triggers_reinstall_even_when_the_declared_ref_is_unchanged() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let fetcher = FixtureFetcherWithIdentity {
+            zip_path,
+            identity: std::cell::RefCell::new("etag-1".into()),
+            fetch_count: std::cell::Cell::new(0),
+        };
+        let component = sample_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        // opts.version mirrors a manifest pinned to a mutable branch ref
+        // (e.g. `ref = "main"`) -- it never changes between runs; only the
+        // remote content the ref points at does.
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        install_component(&component, &manifest, &opts).unwrap();
+        assert_eq!(fetcher.fetch_count.get(), 1);
+
+        // Same declared ref ("main"), but the branch tip moved -- a real
+        // ETag/commits-API change, simulated here by bumping the identity.
+        *fetcher.identity.borrow_mut() = "etag-2".into();
+        install_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(
+            fetcher.fetch_count.get(),
+            2,
+            "a changed remote identity must trigger a real reinstall, not a skip"
+        );
+    }
+
+    #[test]
+    fn an_unchanged_remote_identity_still_skips_reinstall() {
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+
+        let fetcher = FixtureFetcherWithIdentity {
+            zip_path,
+            identity: std::cell::RefCell::new("etag-1".into()),
+            fetch_count: std::cell::Cell::new(0),
+        };
+        let component = sample_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "main".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        install_component(&component, &manifest, &opts).unwrap();
+        install_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(
+            fetcher.fetch_count.get(),
+            1,
+            "an unchanged remote identity must still take the skip shortcut"
         );
     }
 }

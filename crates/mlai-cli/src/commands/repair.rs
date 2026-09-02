@@ -45,6 +45,10 @@ pub fn run(manifest_path: &Path, install_root: &Path, component_name: Option<&st
                 println!("  {} -> already healthy", component.name)
             }
             (ComponentState::Healthy, true) => println!("  {} -> repaired", component.name),
+            (ComponentState::AwaitingProjectBinding, _) => println!(
+                "  {} -> installed, awaiting project binding (run `mlai bind-project`)",
+                component.name
+            ),
             (other, _) => println!("  {} -> {other:?} (NEEDS ATTENTION)", component.name),
         }
     }
