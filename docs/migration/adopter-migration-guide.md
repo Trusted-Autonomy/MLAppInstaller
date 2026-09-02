@@ -1,7 +1,7 @@
 # Migrating an Existing Installer onto MLAppInstaller
 
 **Audience**: any team replacing a bespoke, in-house installer/wizard with MLAppInstaller as the shared engine.
-**Status**: generic adoption guide — a template for the kind of migration mapping any adopting project should work through, not a plan for a specific project. If your team wants a mapping written against your own installer's actual source, work through each section below against your own codebase (or ask for help doing so) rather than trying to reverse-generalize from this template.
+**Status**: generic adoption guide — a template for the kind of migration mapping any adopting project should work through, not a plan for a specific project. If your team wants a mapping written against your own installer's actual source, work through each section below against your own codebase (or ask for help doing so) rather than trying to reverse-generalize from this template. **Updated 2026-09-02**: three engine gaps found while reviewing cinepipe-installer's actual `feat/unified-rust-installer` source against `mlai-core` are now fixed — see "Engine gaps found and fixed" below before relying on this guide's project-binding or versioning sections.
 
 ## Bottom line
 
@@ -13,12 +13,12 @@ If your project already has a working, in-house installer — even a rough one, 
 |---|---|
 | A "don't let cleanup delete outside the install root" path guard | `mlai_core::removals::safe_target` |
 | Versioned removal/cleanup-on-upgrade logic | `mlai_core::removals::{apply_removals, clean_install, remove_orphaned_components}` |
-| Version-comparison logic for upgrade decisions | `mlai_core::versioning::compare_version` |
+| Version-comparison logic for upgrade decisions | `mlai_core::versioning::compare_version`, plus `Fetcher::remote_identity` for components pinned by a mutable ref rather than a tag — see "Engine gaps found and fixed" below |
 | Per-platform setup/health scripts (Windows vs. POSIX twins) | `mlai_core::manifest::{PlatformSetup, PlatformHealth, Component::setup_for_current_os()}` — same `windows`/`posix` split, selected via `cfg!(target_os)` |
 | A GUI wizard's component-selection/install-status frontend | `crates/mlai-gui/src/main.ts` as a starting point to re-skin, not rebuild from scratch |
 | A "pass through backend-specific config without the installer understanding it" protocol | `mlai_core::options_protocol` (`--describe-options`/`--set key=value`) |
 | A "verify against real disk state, not just the recorded install log" repair path | `mlai_core::pipeline::repair_component` |
-| A "bind an already-installed component to a real target project/file after the fact" feature | `mlai_core::pipeline::bind_project` + the `mlai bind-project` CLI subcommand + `mlai-gui`'s "Bind a Project" panel |
+| A "bind an already-installed component to a real target project/file after the fact" feature, including binding the same component to more than one project | `mlai_core::pipeline::bind_project` (persists every bound project, deduplicated) + the `mlai bind-project` CLI subcommand + `mlai-gui`'s "Bind a Project" panel — see "Engine gaps found and fixed" below |
 
 ## What usually requires real changes, not just translation
 
@@ -46,6 +46,14 @@ notes = "recommended baseline"
 **Project/target binding.** If your installer has a feature where an already-installed component gets bound to a real target file or project after the fact (a game-engine project file, a workspace path, anything supplied at bind-time rather than install-time), that generalizes to `manifest.toml`'s `binds_to_project_type` field plus `mlai bind-project` — a component declares what type it binds to, and a `{project}` placeholder in its setup command gets the real path substituted in on bind.
 
 **Licensing/activation.** Whatever your product's own licensing or activation-gating model is, that stays entirely your own product's concern — MLAppInstaller has no opinion on it and shouldn't. It only handles *how the installer's bytes get packaged and published*, never *whether the installed product then requires a license*.
+
+## Engine gaps found and fixed (2026-09-02)
+
+MLAppInstaller's `mlai-core`/`mlai-gui` logic was originally *ported* from cinepipe-installer's real Rust source (`feat/unified-rust-installer`) as a one-time snapshot, not kept in continuous sync. Comparing that branch's actual, already-shipped behavior against `mlai-core` surfaced three real gaps — all now fixed upstream, no adopter-side workaround needed:
+
+- **Version tracking for mutable refs.** `mlai-core` used to record a component's manifest `ref` string (e.g. `ref = "main"`) as its installed "version" verbatim. Since that string never changes between runs, a component pinned to a branch tip instead of a release tag would never be detected as needing a reinstall — the upgrade-in-place behavior this guide's "What typically migrates directly" table promises silently didn't apply to branch refs. Fixed: `Fetcher::remote_identity` resolves a live HTTP `ETag`/`Last-Modified` identity for the component's `source_url` before deciding whether to skip a reinstall, falling back to the old behavior only when the server exposes neither header. If your components are pinned by branch (not a tag), you get this for free — nothing to change in your manifest.
+- **Project-binding components no longer run setup before they're bound.** A component with `binds_to_project_type` used to have its setup command invoked immediately on first `mlai install`, with a literal, unsubstituted `{project}` in its args — before any real project path existed. Fixed: such a component now installs to a new `AwaitingProjectBinding` state (downloaded and unpacked, setup deliberately skipped) until `mlai bind-project` substitutes a real path and runs setup for real. If your migrated manifest has a `binds_to_project_type` component, expect `mlai install` to report it as "awaiting project binding," not an error — that's the intended state, not a regression.
+- **Multi-project binding now persists.** `mlai bind-project` used to force-reinstall with whichever single project path was passed most recently, with no record of prior bindings — binding a second project silently displaced the first in `installed.json`. Fixed: every successful bind now appends to that component's `bound_projects` list (deduplicated), so binding the same component to more than one project (e.g. a UE5 plugin bound to two separate `.uproject` files on one machine) is tracked, not overwritten.
 
 See `docs/migration/configuration-depot-architecture.md` for the concrete mechanics of pulling in MLAppInstaller as a "configuration depot" dependency (pinned CLI binary vs. building the GUI from source) and access-grant instructions if your team needs direct push access rather than fork-based PRs.
 
