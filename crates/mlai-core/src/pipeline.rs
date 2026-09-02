@@ -3,6 +3,7 @@ use crate::fetch::{unpack_zip, Fetcher};
 use crate::health::{check_health, HealthStatus};
 use crate::manifest::{Component, SetupCommand};
 use crate::state::{ComponentRecord, ComponentState, InstalledState};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -175,6 +176,7 @@ fn run_install_sequence(
     record_state(state, opts, component, ComponentState::Unpacked)?;
 
     if let Some(setup) = component.setup_for_current_os() {
+        ensure_setup_command_is_executable(&component_dir, setup);
         run_setup(&component_dir, setup, &opts.set_options)?;
     }
     record_state(state, opts, component, ComponentState::SetupRun)?;
@@ -206,6 +208,30 @@ fn record_state(
     state.save(&opts.install_root)?;
     Ok(())
 }
+
+/// Restores the executable bit on `setup.command` when it resolves to a real
+/// file inside the freshly unpacked component (a script exec'd directly,
+/// e.g. `command: "install/setup.sh"`, as opposed to an interpreter already
+/// on PATH, e.g. `command: "sh"`). GitHub's `codeload.github.com` zipballs
+/// never carry Unix permission bits for any entry, so every extracted file
+/// lands `0644` regardless of what it was in the source repo — without this,
+/// any directly-exec'd POSIX setup script fails with `Permission denied`
+/// on every fresh install. Silently does nothing when `setup.command`
+/// doesn't resolve to a file under `component_dir` (a bare interpreter name,
+/// an absolute path elsewhere, etc.) or when `chmod` itself fails.
+#[cfg(unix)]
+fn ensure_setup_command_is_executable(component_dir: &Path, setup: &SetupCommand) {
+    use std::os::unix::fs::PermissionsExt;
+    let script_path = component_dir.join(&setup.command);
+    if let Ok(metadata) = fs::metadata(&script_path) {
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(permissions.mode() | 0o111);
+        let _ = fs::set_permissions(&script_path, permissions);
+    }
+}
+
+#[cfg(not(unix))]
+fn ensure_setup_command_is_executable(_component_dir: &Path, _setup: &SetupCommand) {}
 
 fn run_setup(
     component_dir: &Path,
@@ -311,6 +337,79 @@ mod tests {
             supports_options_protocol: PlatformFlag::default(),
             binds_to_project_type: None,
         }
+    }
+
+    /// Unlike `sample_component()` (`command: "sh"`, `args: ["setup.sh"]`,
+    /// where `sh` itself is what gets exec'd and needs no bit of its own),
+    /// this mirrors a real converted manifest entry like cinepipe-warden's
+    /// (`command: "install/install-cinepipe-warden.sh"`) where the setup
+    /// script is exec'd *directly* and therefore needs its own executable
+    /// bit — the shape that surfaced this bug in the field.
+    fn direct_exec_component() -> Component {
+        Component {
+            name: "hello-component".into(),
+            source_url: "https://example.com/hello-component.zip".into(),
+            component_ref: "main".into(),
+            default: true,
+            setup: PlatformSetup {
+                windows: None,
+                posix: Some(SetupCommand {
+                    command: "./setup.sh".into(),
+                    args: vec![],
+                }),
+            },
+            health: PlatformHealth {
+                windows: None,
+                posix: Some(HealthCheck::FileExists {
+                    path: "marker.txt".into(),
+                }),
+            },
+            supports_options_protocol: PlatformFlag::default(),
+            binds_to_project_type: None,
+        }
+    }
+
+    #[test]
+    fn a_setup_script_invoked_directly_is_made_executable_after_unpack() {
+        // GitHub's codeload zipballs never carry Unix permission bits for
+        // any file (external_attr is always 0) -- build_fixture_zip's zip
+        // reproduces exactly that, since it never sets a unix mode either.
+        // A component whose setup command exec's the script directly (not
+        // via `sh <script>`) must still be runnable after a fresh unpack.
+        let root = tempdir().unwrap();
+        let fixture_dir = tempdir().unwrap();
+        let zip_path = fixture_dir.path().join("bundle.zip");
+        build_fixture_zip(&zip_path);
+        let fetcher = FixtureFetcher { zip_path };
+
+        let component = direct_exec_component();
+        let manifest = Manifest {
+            manifest_version: "1.0.0".into(),
+            components: vec![component.clone()],
+            removals: vec![],
+            gui: GuiConfig::default(),
+        };
+        let opts = PipelineOptions {
+            install_root: root.path().to_path_buf(),
+            fetcher: &fetcher,
+            version: "abc123".into(),
+            backup_keep: 3,
+            set_options: vec![],
+            force: false,
+        };
+
+        let result = install_component(&component, &manifest, &opts).unwrap();
+
+        assert_eq!(result, ComponentState::Healthy);
+        use std::os::unix::fs::PermissionsExt;
+        let mode = fs::metadata(root.path().join("hello-component").join("setup.sh"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert!(
+            mode & 0o100 != 0,
+            "setup script must be made executable after unpack, got mode {mode:o}"
+        );
     }
 
     #[test]
